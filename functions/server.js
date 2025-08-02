@@ -20,8 +20,12 @@ exports.handler = async (event, context) => {
     };
   }
   
+  // Extract path from event
+  const path = event.path || event.rawPath || '';
+  console.log('Request path:', path);
+  
   // Health check endpoint
-  if (event.path === '/api/health') {
+  if (path.includes('/api/health') || path.endsWith('/health')) {
     return {
       statusCode: 200,
       headers: {
@@ -37,7 +41,7 @@ exports.handler = async (event, context) => {
   }
   
   // Image extraction endpoint
-  if (event.path === '/api/extract-product-image') {
+  if (path.includes('/api/extract-product-image') || path.endsWith('/extract-product-image')) {
     try {
       console.log('Product image extraction requested');
       
@@ -146,7 +150,7 @@ exports.handler = async (event, context) => {
   }
   
   // Canvas export endpoint to handle CORS issues
-  if (event.path === '/api/export-canvas') {
+  if (path.includes('/api/export-canvas') || path.endsWith('/export-canvas')) {
     try {
       console.log('Canvas export requested');
       
@@ -204,6 +208,10 @@ exports.handler = async (event, context) => {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*'
     },
-    body: JSON.stringify({ error: 'Endpoint not found' })
+    body: JSON.stringify({ 
+      error: 'Endpoint not found',
+      path: path,
+      availableEndpoints: ['/api/health', '/api/extract-product-image', '/api/export-canvas']
+    })
   };
 }; 
