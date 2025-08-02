@@ -10,6 +10,20 @@ const createSimpleSupabaseClient = () => {
         try {
           console.log('Sending magic link to:', email)
           console.log('Options:', options)
+          console.log('Request URL:', `${supabaseUrl}/auth/v1/otp`)
+          console.log('Request headers:', {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey ? 'present' : 'missing',
+            'Authorization': supabaseKey ? 'present' : 'missing'
+          })
+          
+          const requestBody = {
+            email,
+            type: 'magiclink',
+            gotrue_meta_security: {},
+            ...options
+          }
+          console.log('Request body:', requestBody)
           
           const response = await fetch(`${supabaseUrl}/auth/v1/otp`, {
             method: 'POST',
@@ -18,29 +32,33 @@ const createSimpleSupabaseClient = () => {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`
             },
-            body: JSON.stringify({
-              email,
-              type: 'magiclink',
-              gotrue_meta_security: {},
-              ...options
-            })
+            body: JSON.stringify(requestBody)
           })
           
           console.log('Magic link response status:', response.status)
+          console.log('Magic link response headers:', Object.fromEntries(response.headers.entries()))
+          
+          const responseText = await response.text()
+          console.log('Magic link response body:', responseText)
           
           if (!response.ok) {
-            const errorText = await response.text()
             let error
             try {
-              error = JSON.parse(errorText)
+              error = JSON.parse(responseText)
             } catch {
-              error = { message: `HTTP ${response.status}: ${errorText}` }
+              error = { message: `HTTP ${response.status}: ${responseText}` }
             }
             console.error('Magic link error:', error)
             return { data: null, error }
           }
           
-          const data = await response.json()
+          let data
+          try {
+            data = JSON.parse(responseText)
+          } catch {
+            data = { message: 'Magic link sent successfully' }
+          }
+          
           console.log('Magic link sent successfully')
           return { data, error: null }
         } catch (error) {
