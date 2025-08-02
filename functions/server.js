@@ -1,9 +1,6 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const fetch = require('node-fetch');
 
-puppeteer.use(StealthPlugin());
-
-console.log('Server starting with Puppeteer...');
+console.log('Server starting with proxy approach...');
 
 // Health check endpoint
 exports.handler = async (event, context) => {
@@ -34,7 +31,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
-        message: 'Puppeteer server running'
+        message: 'Proxy server running'
       })
     };
   }
@@ -60,114 +57,76 @@ exports.handler = async (event, context) => {
 
       console.log('Extracting images from:', url);
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu'
-        ]
-      });
+      // Use a proxy service to fetch the page
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
       
-      const page = await browser.newPage();
-      
-      // Set realistic viewport and user agent
-      await page.setViewport({ width: 1366, height: 768 });
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-      
-      // Intercept and collect images
-      const images = [];
-      page.on('response', async (response) => {
-        if (response.request().resourceType() === 'image') {
-          try {
-            const buffer = await response.buffer();
-            const contentType = response.headers()['content-type'] || 'image/jpeg';
-            images.push({
-              url: response.url(),
-              data: `data:${contentType};base64,${buffer.toString('base64')}`,
-              size: buffer.length
-            });
-          } catch (err) {
-            console.log('Failed to process image:', err.message);
-          }
-        }
-      });
-      
-      // Navigate to page
-      await page.goto(url, { 
-        waitUntil: 'networkidle2',
-        timeout: 30000 
-      });
-      
-      // Wait for images to load
-      await page.waitForSelector('img', { timeout: 10000 });
-      
-      // Extract additional images from img tags that might not have triggered response event
-      const pageImages = await page.evaluate(() => {
-        const imgs = Array.from(document.querySelectorAll('img'));
-        return imgs
-          .filter(img => img.src && img.src.startsWith('http'))
-          .map(img => ({
-            src: img.src,
-            alt: img.alt || '',
-            width: img.naturalWidth,
-            height: img.naturalHeight
-          }))
-          .filter(img => img.width > 100 && img.height > 100); // Filter small images
-      });
-      
-      await browser.close();
-      
-      // Find the best product image
-      let bestImage = null;
-      
-      // First try to find a product image from intercepted images
-      const productImages = images.filter(img => 
-        img.size > 10000 && // At least 10KB
-        !img.url.includes('logo') &&
-        !img.url.includes('icon') &&
-        !img.url.includes('banner')
-      );
-      
-      if (productImages.length > 0) {
-        bestImage = productImages[0].data; // Use base64 data
-      } else if (pageImages.length > 0) {
-        // Fallback to page images
-        const bestPageImage = pageImages.find(img => 
-          !img.src.includes('logo') &&
-          !img.src.includes('icon') &&
-          !img.src.includes('banner')
-        );
-        if (bestPageImage) {
-          bestImage = bestPageImage.src;
-        }
+      if (!response.ok) {
+        throw new Error(`Failed to fetch page: ${response.status}`);
       }
       
+      const html = await response.text();
+      
+      // Extract images from HTML
+      const imageMatches = html.match(/https:\/\/[^"]*\.(jpg|jpeg|png|webp)/gi);
+      
+      if (!imageMatches || imageMatches.length === 0) {
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'No images found on page'
+          })
+        };
+      }
+      
+      // Filter and rank images
+      const productImages = imageMatches
+        .filter(img => 
+          !img.includes('logo') &&
+          !img.includes('icon') &&
+          !img.includes('banner') &&
+          !img.includes('ad') &&
+          img.length > 50
+        )
+        .slice(0, 5); // Take first 5 potential product images
+      
       console.log('Found images:', {
-        intercepted: images.length,
-        pageImages: pageImages.length,
-        bestImage: !!bestImage
+        total: imageMatches.length,
+        productImages: productImages.length
       });
       
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type'
-        },
-        body: JSON.stringify({
-          success: true,
-          imageUrl: bestImage,
-          totalFound: images.length + pageImages.length,
-          message: bestImage ? 'Image extracted successfully' : 'No suitable image found'
-        })
-      };
+      if (productImages.length > 0) {
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: true,
+            imageUrl: productImages[0],
+            totalFound: productImages.length,
+            message: 'Image extracted successfully'
+          })
+        };
+      } else {
+        return {
+          statusCode: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            message: 'No suitable product images found'
+          })
+        };
+      }
       
     } catch (error) {
       console.error('Error:', error);
@@ -180,8 +139,7 @@ exports.handler = async (event, context) => {
         },
         body: JSON.stringify({
           success: false,
-          error: error.message,
-          stack: error.stack
+          error: error.message
         })
       };
     }
