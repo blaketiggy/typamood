@@ -1058,7 +1058,55 @@ document.getElementById('publish').addEventListener('click', async () => {
     // Try to convert canvas to PNG, but handle CORS issues
     let dataURL;
     try {
-      dataURL = canvas.toDataURL('image/png');
+      // Create a new canvas to avoid CORS issues
+      const exportCanvas = document.createElement('canvas');
+      const exportCtx = exportCanvas.getContext('2d');
+      
+      // Set size to 600x600
+      exportCanvas.width = 600;
+      exportCanvas.height = 600;
+      
+      // Fill with white background
+      exportCtx.fillStyle = '#ffffff';
+      exportCtx.fillRect(0, 0, 600, 600);
+      
+      // Calculate scale to fit the original canvas content
+      const scaleX = 600 / canvas.width;
+      const scaleY = 600 / canvas.height;
+      const scale = Math.min(scaleX, scaleY);
+      
+      // Calculate centering offset
+      const offsetX = (600 - canvas.width * scale) / 2;
+      const offsetY = (600 - canvas.height * scale) / 2;
+      
+      // Draw the original canvas content scaled and centered
+      exportCtx.save();
+      exportCtx.translate(offsetX, offsetY);
+      exportCtx.scale(scale, scale);
+      
+      // Draw each image individually to avoid CORS issues
+      for (const img of loadedImages) {
+        if (img.element && img.element.complete) {
+          exportCtx.save();
+          exportCtx.translate(img.x, img.y);
+          exportCtx.rotate(img.rotation);
+          exportCtx.scale(img.scale, img.scale);
+          exportCtx.drawImage(
+            img.element,
+            -img.size.width / 2,
+            -img.size.height / 2,
+            img.size.width,
+            img.size.height
+          );
+          exportCtx.restore();
+        }
+      }
+      exportCtx.restore();
+      
+      // Convert to data URL
+      dataURL = exportCanvas.toDataURL('image/png');
+      console.log('Successfully exported canvas to 600x600 PNG');
+      
     } catch (corsError) {
       console.log('Canvas export failed due to CORS, using fallback');
       // Create a simple placeholder image for tainted canvases
