@@ -1028,6 +1028,8 @@ document.getElementById('publish').addEventListener('click', async () => {
     // Publish to Supabase
     const result = await api.publishMoodboard(moodboardData);
     
+    console.log('Publish result:', result);
+    
     ui.showNotification('Moodboard published successfully!');
     
     // Save moodboard data to localStorage for the published page
@@ -1035,6 +1037,9 @@ document.getElementById('publish').addEventListener('click', async () => {
       const storageKey = `moodboard_${result.moodboardId}`;
       localStorage.setItem(storageKey, JSON.stringify(result.moodboardData));
       console.log('Moodboard data saved to localStorage:', storageKey);
+      console.log('Saved data:', result.moodboardData);
+    } else {
+      console.log('No moodboard data returned from server');
     }
     
     // Open the published page
