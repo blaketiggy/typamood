@@ -769,8 +769,33 @@ async function extractAmazonImage(url) {
           console.log('Trying Amazon image URL:', imageUrl);
           const response = await fetch(imageUrl, { method: 'HEAD' });
           if (response.ok) {
-            console.log('Found working Amazon image URL:', imageUrl);
-            return imageUrl;
+            // Check if this is actually a valid image by loading it
+            const imgResponse = await fetch(imageUrl);
+            const blob = await imgResponse.blob();
+            
+            // Create a temporary image to check dimensions
+            const validImageUrl = await new Promise((resolve) => {
+              const tempImg = new Image();
+              tempImg.onload = function() {
+                console.log('Test image dimensions:', tempImg.width, 'x', tempImg.height);
+                if (tempImg.width > 1 && tempImg.height > 1) {
+                  console.log('Found working Amazon image URL:', imageUrl);
+                  resolve(imageUrl);
+                } else {
+                  console.log('Image too small, trying next URL...');
+                  resolve(null);
+                }
+              };
+              tempImg.onerror = function() {
+                console.log('Failed to load test image:', imageUrl);
+                resolve(null);
+              };
+              tempImg.src = URL.createObjectURL(blob);
+            });
+            
+            if (validImageUrl) {
+              return validImageUrl;
+            }
           }
         } catch (e) {
           console.log('Failed to check:', imageUrl);
