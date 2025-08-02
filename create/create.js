@@ -412,6 +412,14 @@ async function addImageFromUrl() {
     
     console.log('Final image URL to load:', imageUrl);
     
+    // Use CORS proxy for external images to avoid tainting canvas
+    let finalImageUrl = imageUrl;
+    if (!imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:')) {
+      // Use a CORS proxy for external images
+      finalImageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`;
+      console.log('Using CORS proxy for image:', finalImageUrl);
+    }
+    
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
@@ -420,6 +428,8 @@ async function addImageFromUrl() {
       console.log('Image dimensions:', img.width, 'x', img.height);
       console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
       console.log('Image src:', img.src);
+      console.log('Original URL:', imageUrl);
+      console.log('Proxied URL:', finalImageUrl);
       
       // Check if image has actual data
       const tempCanvas = document.createElement('canvas');
@@ -545,7 +555,7 @@ async function addImageFromUrl() {
       if (img.crossOrigin === 'anonymous') {
         console.log('Retrying without CORS...');
         img.crossOrigin = null;
-        img.src = imageUrl;
+        img.src = imageUrl; // Use original URL for fallback
       } else {
         console.error('Image loading failed completely');
         
@@ -557,8 +567,8 @@ async function addImageFromUrl() {
       }
     };
     
-    console.log('Setting image src to:', imageUrl);
-    img.src = imageUrl;
+    console.log('Setting image src to:', finalImageUrl);
+    img.src = finalImageUrl;
     
   } catch (error) {
     console.error('=== ERROR IN ADD IMAGE FUNCTION ===');
@@ -1054,51 +1064,31 @@ document.getElementById('publish').addEventListener('click', async () => {
   const stopLoading = ui.showLoading(publishBtn);
 
   try {
-    // Try to convert canvas to PNG, but handle CORS issues
+    // Use HTML2Canvas to take a screenshot of the canvas (bypasses CORS)
     let dataURL;
     try {
-      // Create a new canvas to avoid CORS issues
-      const exportCanvas = document.createElement('canvas');
-      const exportCtx = exportCanvas.getContext('2d');
+      console.log('Taking screenshot of canvas using HTML2Canvas...');
       
-      // Use same size as canvas (400x400)
-      exportCanvas.width = 400;
-      exportCanvas.height = 400;
-      
-      // Fill with white background
-      exportCtx.fillStyle = '#ffffff';
-      exportCtx.fillRect(0, 0, 400, 400);
-      
-      // No scaling needed since canvas and export are same size
-      // Just draw the canvas content directly
-      
-      // Draw the original canvas content directly (no scaling needed)
-      // Draw each image individually to avoid CORS issues
-      for (const img of loadedImages) {
-        if (img.element && img.element.complete) {
-          exportCtx.save();
-          exportCtx.translate(img.x, img.y);
-          exportCtx.rotate(img.rotation);
-          exportCtx.scale(img.scale, img.scale);
-          exportCtx.drawImage(
-            img.element,
-            -img.size.width / 2,
-            -img.size.height / 2,
-            img.size.width,
-            img.size.height
-          );
-          exportCtx.restore();
-        }
-      }
+      // Take a screenshot of the canvas element
+      const canvasElement = document.getElementById('canvas');
+      const screenshot = await html2canvas(canvasElement, {
+        width: 400,
+        height: 400,
+        scale: 1,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+      });
       
       // Convert to data URL with compression
-      dataURL = exportCanvas.toDataURL('image/jpeg', 0.6); // Use JPEG with 60% quality for even smaller size
-      console.log('Successfully exported canvas to 400x400 JPEG');
+      dataURL = screenshot.toDataURL('image/jpeg', 0.6);
+      console.log('Successfully captured canvas screenshot');
       console.log('Image data size:', dataURL.length, 'characters');
       
-    } catch (corsError) {
-      console.log('Canvas export failed due to CORS, using fallback');
-      // Create a simple placeholder image for tainted canvases
+    } catch (screenshotError) {
+      console.log('Screenshot failed, using fallback:', screenshotError);
+      // Create a simple placeholder image
       dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     }
 
