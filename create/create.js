@@ -541,6 +541,13 @@ async function addImageFromUrl() {
       console.error('=== IMAGE LOAD ERROR ===');
       console.error('Failed to load image from:', imageUrl);
       console.error('Error details:', img.error);
+      console.error('Image element state:', {
+        src: img.src,
+        crossOrigin: img.crossOrigin,
+        complete: img.complete,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight
+      });
       
       // Try without CORS if it failed
       if (img.crossOrigin === 'anonymous') {
@@ -1070,7 +1077,18 @@ document.getElementById('publish').addEventListener('click', async () => {
     console.log('Drawing', loadedImages.length, 'images to export canvas...');
     for (let i = 0; i < loadedImages.length; i++) {
       const img = loadedImages[i];
-      if (img.element && img.element.complete) {
+      console.log('Processing image', i, ':', {
+        hasElement: !!img.element,
+        elementComplete: img.element ? img.element.complete : false,
+        elementNaturalWidth: img.element ? img.element.naturalWidth : 0,
+        elementNaturalHeight: img.element ? img.element.naturalHeight : 0,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height
+      });
+      
+      if (img.element && img.element.complete && img.element.naturalWidth > 0) {
         try {
           // Apply the same transformations as the main canvas
           exportCtx.save();
@@ -1089,6 +1107,8 @@ document.getElementById('publish').addEventListener('click', async () => {
         } catch (drawError) {
           console.log('Failed to draw image', i, ':', drawError);
         }
+      } else {
+        console.log('Skipping image', i, '- not ready for export');
       }
     }
     
@@ -1107,43 +1127,60 @@ document.getElementById('publish').addEventListener('click', async () => {
       }
       
     } catch (exportError) {
-      console.log('Clean canvas export failed, trying HTML2Canvas...');
+      console.log('Clean canvas export failed, trying main canvas export...');
       
       try {
-        // Check if HTML2Canvas is available
-        if (typeof html2canvas === 'undefined') {
-          throw new Error('HTML2Canvas library not loaded');
-        }
-        
-        const canvasElement = document.getElementById('canvas');
-        if (!canvasElement) {
-          throw new Error('Canvas element not found');
-        }
-        
-        console.log('Taking screenshot with HTML2Canvas...');
-        const screenshot = await html2canvas(canvasElement, {
-          width: 400,
-          height: 400,
-          scale: 1,
-          backgroundColor: '#ffffff',
-          useCORS: true,
-          allowTaint: true,
-          logging: false
-        });
-        
-        dataURL = screenshot.toDataURL('image/jpeg', 0.4);
-        console.log('HTML2Canvas screenshot successful');
+        // Try the main canvas as a fallback
+        const mainCanvas = document.getElementById('canvas');
+        dataURL = mainCanvas.toDataURL('image/jpeg', 0.6);
+        console.log('Main canvas export successful');
         console.log('Image data size:', dataURL.length, 'characters');
         
         // Check if it's the placeholder
         if (dataURL.length < 200) {
-          console.log('WARNING: HTML2Canvas also produced small image');
+          console.log('WARNING: Main canvas also produced small image, trying HTML2Canvas...');
+          throw new Error('Main canvas produced small image');
         }
         
-      } catch (screenshotError) {
-        console.log('HTML2Canvas also failed:', screenshotError);
-        // Create a simple placeholder image
-        dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      } catch (mainCanvasError) {
+        console.log('Main canvas export failed, trying HTML2Canvas...');
+        
+        try {
+          // Check if HTML2Canvas is available
+          if (typeof html2canvas === 'undefined') {
+            throw new Error('HTML2Canvas library not loaded');
+          }
+          
+          const canvasElement = document.getElementById('canvas');
+          if (!canvasElement) {
+            throw new Error('Canvas element not found');
+          }
+          
+          console.log('Taking screenshot with HTML2Canvas...');
+          const screenshot = await html2canvas(canvasElement, {
+            width: 400,
+            height: 400,
+            scale: 1,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: true,
+            logging: false
+          });
+          
+          dataURL = screenshot.toDataURL('image/jpeg', 0.4);
+          console.log('HTML2Canvas screenshot successful');
+          console.log('Image data size:', dataURL.length, 'characters');
+          
+          // Check if it's the placeholder
+          if (dataURL.length < 200) {
+            console.log('WARNING: HTML2Canvas also produced small image');
+          }
+          
+        } catch (screenshotError) {
+          console.log('HTML2Canvas also failed:', screenshotError);
+          // Create a simple placeholder image
+          dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+        }
       }
     }
 
