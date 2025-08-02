@@ -1118,63 +1118,71 @@ document.getElementById('publish').addEventListener('click', async () => {
   const stopLoading = ui.showLoading(publishBtn);
 
   try {
-    // Try to export the main canvas directly first
-    console.log('Trying to export main canvas...');
-    const mainCanvas = document.getElementById('canvas');
-    let dataURL;
+        // Create HTML representation of the moodboard for HTML2Canvas
+    console.log('Creating HTML moodboard for export...');
+    const moodboardContainer = document.createElement('div');
+    moodboardContainer.style.cssText = `
+      width: 400px;
+      height: 400px;
+      background: white;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #e9e9e7;
+      border-radius: 6px;
+    `;
     
+    // Add all images as HTML elements
+    loadedImages.forEach((img, index) => {
+      const imgElement = document.createElement('img');
+      imgElement.src = img.originalImageUrl + (img.originalImageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+      imgElement.style.cssText = `
+        position: absolute;
+        left: ${img.x}px;
+        top: ${img.y}px;
+        width: ${img.width}px;
+        height: ${img.height}px;
+        transform: rotate(${img.rotation || 0}rad) scale(${img.scale || 1});
+        transform-origin: center;
+        object-fit: cover;
+      `;
+      moodboardContainer.appendChild(imgElement);
+    });
+    
+    // Temporarily add to DOM (hidden)
+    moodboardContainer.style.position = 'absolute';
+    moodboardContainer.style.left = '-9999px';
+    moodboardContainer.style.top = '-9999px';
+    document.body.appendChild(moodboardContainer);
+    
+    let dataURL;
     try {
-      // Try direct export first
-      dataURL = mainCanvas.toDataURL('image/jpeg', 0.6);
-      console.log('Direct export successful');
+      console.log('Capturing HTML moodboard with HTML2Canvas...');
+      const screenshot = await html2canvas(moodboardContainer, {
+        width: 400,
+        height: 400,
+        scale: 1,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+      });
+      
+      dataURL = screenshot.toDataURL('image/jpeg', 0.6);
+      console.log('HTML2Canvas capture successful');
       console.log('Image data size:', dataURL.length, 'characters');
-      console.log('Image data starts with:', dataURL.substring(0, 50));
       
       // Check if it's the placeholder
       if (dataURL.length < 200) {
-        console.log('WARNING: Direct export produced small image, trying HTML2Canvas...');
-        throw new Error('Direct export produced small image');
+        console.log('WARNING: HTML2Canvas produced small image');
       }
       
-    } catch (directError) {
-      console.log('Direct export failed, trying HTML2Canvas...');
-      
-      try {
-        // Check if HTML2Canvas is available
-        if (typeof html2canvas === 'undefined') {
-          throw new Error('HTML2Canvas library not loaded');
-        }
-        
-        const canvasElement = document.getElementById('canvas');
-        if (!canvasElement) {
-          throw new Error('Canvas element not found');
-        }
-        
-        console.log('Taking screenshot with HTML2Canvas...');
-        const screenshot = await html2canvas(canvasElement, {
-          width: 400,
-          height: 400,
-          scale: 1,
-          backgroundColor: '#ffffff',
-          useCORS: true,
-          allowTaint: true,
-          logging: false
-        });
-        
-        dataURL = screenshot.toDataURL('image/jpeg', 0.4);
-        console.log('HTML2Canvas screenshot successful');
-        console.log('Image data size:', dataURL.length, 'characters');
-        
-        // Check if it's the placeholder
-        if (dataURL.length < 200) {
-          console.log('WARNING: HTML2Canvas also produced small image');
-        }
-        
-      } catch (screenshotError) {
-        console.log('HTML2Canvas also failed:', screenshotError);
-        // Create a simple placeholder image
-        dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-      }
+    } catch (screenshotError) {
+      console.log('HTML2Canvas failed:', screenshotError);
+      // Create a simple placeholder image
+      dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    } finally {
+      // Clean up
+      document.body.removeChild(moodboardContainer);
     }
     
     // Save the image to the server
