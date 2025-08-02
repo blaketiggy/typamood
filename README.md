@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Typamood Starter
 
 Welcome to Typamood! This is your early-internet inspired minimalist moodboard app.
@@ -24,3 +25,5 @@ Welcome to Typamood! This is your early-internet inspired minimalist moodboard a
 4. Deploy `/dist/` to Netlify or similar host.
 
 Enjoy!
+
+
