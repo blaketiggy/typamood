@@ -1,0 +1,24 @@
+[build]
+  publish = "."
+  command = "npm install"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  directory = "functions"
+
+[dev]
+  command = "npm run dev"
+  port = 3000
+  publish = "."

@@ -1,0 +1,7 @@
+body {
+  font-family: system-ui;
+  background: #fff;
+  color: #000;
+  margin: 2rem;
+}
+a { color: blue; text-decoration: underline; }

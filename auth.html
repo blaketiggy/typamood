@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typaboard - Sign In</title>
+    <link rel="stylesheet" href="create/style.css">
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9e9e7;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .auth-header h1 {
+            font-size: 2rem;
+            color: #37352f;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: #787774;
+            font-size: 14px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #37352f;
+        }
+
+        .form-group input {
+            padding: 12px 16px;
+            border: 1px solid #e9e9e7;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #ffffff;
+            color: #37352f;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2383e2;
+            box-shadow: 0 0 0 3px rgba(35, 131, 226, 0.1);
+        }
+
+        .auth-button {
+            padding: 12px 16px;
+            background: #2383e2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .auth-button:hover {
+            background: #1a6bc7;
+            transform: translateY(-1px);
+        }
+
+        .auth-button:disabled {
+            background: #787774;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e9e9e7;
+        }
+
+        .auth-toggle button {
+            background: none;
+            border: none;
+            color: #2383e2;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+
+        .auth-toggle button:hover {
+            color: #1a6bc7;
+        }
+
+        .error-message {
+            background: #fef0f0;
+            border: 1px solid #d73a49;
+            color: #d73a49;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .success-message {
+            background: #f0f9f0;
+            border: 1px solid #0f7b0f;
+            color: #0f7b0f;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .info-message {
+            background: #f0f7ff;
+            border: 1px solid #2383e2;
+            color: #2383e2;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 24px;
+        }
+
+        .back-link a {
+            color: #787774;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link a:hover {
+            color: #37352f;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Typaboard</h1>
+            <p>Sign in with magic link</p>
+        </div>
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="success-message" class="success-message" style="display: none;"></div>
+        <div id="info-message" class="info-message" style="display: none;"></div>
+
+        <!-- Sign In Form -->
+        <form id="signin-form" class="auth-form">
+            <div class="form-group">
+                <label for="signin-email">Email</label>
+                <input type="email" id="signin-email" required placeholder="Enter your email">
+            </div>
+            <button type="submit" class="auth-button">Send Magic Link</button>
+        </form>
+
+        <!-- Sign Up Form -->
+        <form id="signup-form" class="auth-form" style="display: none;">
+            <div class="form-group">
+                <label for="signup-email">Email</label>
+                <input type="email" id="signup-email" required placeholder="Enter your email">
+            </div>
+            <button type="submit" class="auth-button">Create Account</button>
+        </form>
+
+        <div class="auth-toggle">
+            <button id="toggle-auth">Don't have an account? Sign up</button>
+        </div>
+
+        <div class="back-link">
+            <a href="/">← Back to create moodboard</a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, ui } from './create/supabase-client.js';
+
+        let isSignUp = false;
+
+        // Toggle between sign in and sign up
+        document.getElementById('toggle-auth').addEventListener('click', () => {
+            isSignUp = !isSignUp;
+            const signinForm = document.getElementById('signin-form');
+            const signupForm = document.getElementById('signup-form');
+            const toggleButton = document.getElementById('toggle-auth');
+
+            if (isSignUp) {
+                signinForm.style.display = 'none';
+                signupForm.style.display = 'flex';
+                toggleButton.textContent = 'Already have an account? Sign in';
+            } else {
+                signinForm.style.display = 'flex';
+                signupForm.style.display = 'none';
+                toggleButton.textContent = "Don't have an account? Sign up";
+            }
+        });
+
+        // Handle sign in
+        document.getElementById('signin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const button = e.target.querySelector('button');
+
+            const stopLoading = ui.showLoading(button);
+
+            try {
+                const { error } = await auth.signIn(email);
+                if (error) throw error;
+
+                showSuccess('Magic link sent! Check your email and click the link to sign in.');
+                showInfo('You can close this page and return to creating your moodboard.');
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                stopLoading();
+            }
+        });
+
+        // Handle sign up
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const button = e.target.querySelector('button');
+
+            const stopLoading = ui.showLoading(button);
+
+            try {
+                const { error } = await auth.signUp(email);
+                if (error) throw error;
+
+                showSuccess('Account created! Check your email and click the magic link to verify your account.');
+                showInfo('You can close this page and return to creating your moodboard.');
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                stopLoading();
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('success-message').style.display = 'none';
+            document.getElementById('info-message').style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('info-message').style.display = 'none';
+        }
+
+        function showInfo(message) {
+            const infoDiv = document.getElementById('info-message');
+            infoDiv.textContent = message;
+            infoDiv.style.display = 'block';
+        }
+
+        // Check if user is already signed in
+        auth.getCurrentUser().then(user => {
+            if (user) {
+                window.location.href = '/create/';
+            }
+        });
+    </script>
+</body>
+</html> 

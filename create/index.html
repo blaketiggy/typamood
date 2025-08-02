@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Moodboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 contenteditable="true" id="moodboard-title" class="editable-title">Name your moodboard</h1>
+    
+    <div class="canvas-container">
+      <canvas id="canvas"></canvas>
+    </div>
+    
+    <div class="controls">
+      <div class="url-input-container">
+        <div class="input-toggle">
+          <button id="toggle-input" class="toggle-btn active" data-mode="product">Product URL</button>
+          <button id="toggle-input-2" class="toggle-btn" data-mode="image">Direct Image</button>
+        </div>
+        <input type="url" id="url-input" placeholder="Enter product URL..." />
+        <button id="add-url" class="add-btn">+</button>
+      </div>
+      
+      <div class="button-group">
+        <button id="remove-bg" class="small-btn" title="Remove background (B)">🎨 BG</button>
+        <button id="clear-canvas">Clear All</button>
+        <button id="publish">Publish</button>
+      </div>
+      
+      <div class="gesture-hint">
+        <p>💡 <strong>Controls:</strong></p>
+        <p class="mobile-hint">📱 <strong>Mobile:</strong> Tap to select • Drag to move • Pinch to zoom/rotate</p>
+        <p class="desktop-hint">🖱️ <strong>Desktop:</strong> Click to select • Drag to move • Ctrl+drag to scale/rotate • Mouse wheel to zoom • Press 'B' to remove background</p>
+        <p class="paste-hint">📋 <strong>Paste:</strong> Ctrl+V to paste images from clipboard</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="create.js"></script>
+</body>
+</html>
