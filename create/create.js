@@ -1060,9 +1060,27 @@ document.getElementById('publish').addEventListener('click', async () => {
     try {
       console.log('Trying direct canvas export...');
       const canvas = document.getElementById('canvas');
+      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+      console.log('Canvas has content:', canvas.width > 0 && canvas.height > 0);
+      
+      // Check if canvas has any content
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const hasContent = imageData.data.some(pixel => pixel !== 0);
+      console.log('Canvas has non-empty pixels:', hasContent);
+      console.log('Loaded images count:', loadedImages.length);
+      console.log('Images on canvas:', loadedImages.map(img => ({ x: img.x, y: img.y, width: img.width, height: img.height })));
+      
       dataURL = canvas.toDataURL('image/jpeg', 0.6);
       console.log('Direct export successful');
       console.log('Image data size:', dataURL.length, 'characters');
+      console.log('Image data starts with:', dataURL.substring(0, 50));
+      
+      // Check if it's the placeholder
+      if (dataURL.length < 200) {
+        console.log('WARNING: Image data seems too small, might be placeholder');
+        throw new Error('Canvas export produced placeholder image');
+      }
       
     } catch (corsError) {
       console.log('Direct export failed due to CORS, trying HTML2Canvas...');
@@ -1092,6 +1110,11 @@ document.getElementById('publish').addEventListener('click', async () => {
         dataURL = screenshot.toDataURL('image/jpeg', 0.4);
         console.log('HTML2Canvas screenshot successful');
         console.log('Image data size:', dataURL.length, 'characters');
+        
+        // Check if it's the placeholder
+        if (dataURL.length < 200) {
+          console.log('WARNING: HTML2Canvas also produced small image');
+        }
         
       } catch (screenshotError) {
         console.log('HTML2Canvas also failed:', screenshotError);
