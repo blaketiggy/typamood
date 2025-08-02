@@ -1055,25 +1055,31 @@ document.getElementById('publish').addEventListener('click', async () => {
   const stopLoading = ui.showLoading(publishBtn);
 
   try {
-    // Use HTML2Canvas to take a screenshot of the canvas (bypasses CORS)
+    // Try to export canvas directly first, fallback to HTML2Canvas if CORS fails
     let dataURL;
     try {
-      console.log('Taking screenshot of canvas using HTML2Canvas...');
+      console.log('Trying direct canvas export...');
+      const canvas = document.getElementById('canvas');
+      dataURL = canvas.toDataURL('image/jpeg', 0.6);
+      console.log('Direct export successful');
+      console.log('Image data size:', dataURL.length, 'characters');
       
-      // Check if HTML2Canvas is available
-      if (typeof html2canvas === 'undefined') {
-        throw new Error('HTML2Canvas library not loaded');
-      }
+    } catch (corsError) {
+      console.log('Direct export failed due to CORS, trying HTML2Canvas...');
       
-      // Take a screenshot of the canvas element
-      const canvasElement = document.getElementById('canvas');
-      if (!canvasElement) {
-        throw new Error('Canvas element not found');
-      }
-      
-      console.log('Canvas element found, taking screenshot...');
-      const screenshot = await Promise.race([
-        html2canvas(canvasElement, {
+      try {
+        // Check if HTML2Canvas is available
+        if (typeof html2canvas === 'undefined') {
+          throw new Error('HTML2Canvas library not loaded');
+        }
+        
+        const canvasElement = document.getElementById('canvas');
+        if (!canvasElement) {
+          throw new Error('Canvas element not found');
+        }
+        
+        console.log('Taking screenshot with HTML2Canvas...');
+        const screenshot = await html2canvas(canvasElement, {
           width: 400,
           height: 400,
           scale: 1,
@@ -1081,36 +1087,14 @@ document.getElementById('publish').addEventListener('click', async () => {
           useCORS: true,
           allowTaint: true,
           logging: false
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Screenshot timeout')), 10000)
-        )
-      ]);
-      
-      // Convert to data URL with compression
-      dataURL = screenshot.toDataURL('image/jpeg', 0.4); // More aggressive compression
-      console.log('Successfully captured canvas screenshot');
-      console.log('Image data size:', dataURL.length, 'characters');
-      
-      // Check if image data is too large (over 1MB)
-      if (dataURL.length > 1000000) {
-        console.log('Image data too large, compressing further...');
-        dataURL = screenshot.toDataURL('image/jpeg', 0.2); // Even more compression
-        console.log('Compressed image size:', dataURL.length, 'characters');
-      }
-      
-    } catch (screenshotError) {
-      console.log('Screenshot failed, using fallback:', screenshotError);
-      console.log('Error details:', screenshotError.message);
-      
-      // Try fallback method - create a simple canvas export
-      try {
-        console.log('Trying fallback canvas export...');
-        const canvas = document.getElementById('canvas');
-        dataURL = canvas.toDataURL('image/jpeg', 0.6);
-        console.log('Fallback export successful');
-      } catch (fallbackError) {
-        console.log('Fallback also failed:', fallbackError);
+        });
+        
+        dataURL = screenshot.toDataURL('image/jpeg', 0.4);
+        console.log('HTML2Canvas screenshot successful');
+        console.log('Image data size:', dataURL.length, 'characters');
+        
+      } catch (screenshotError) {
+        console.log('HTML2Canvas also failed:', screenshotError);
         // Create a simple placeholder image
         dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       }
