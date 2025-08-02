@@ -1114,18 +1114,46 @@ document.getElementById('publish').addEventListener('click', async () => {
     }
     
     // Collect product URLs with better names
-    const productPromises = loadedImages
+    const products = loadedImages
       .filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image')
-      .map(async img => {
-        const productName = await getProductName(img.originalImageUrl);
+      .map(img => {
+        // Extract product name from URL (simplified for now)
+        let productName = 'Product';
+        try {
+          const url = new URL(img.originalImageUrl);
+          
+          if (url.hostname.includes('amazon.com')) {
+            const pathParts = url.pathname.split('/');
+            const productId = pathParts.find(part => part.length === 10 && /^[A-Z0-9]{10}$/.test(part));
+            if (productId) {
+              productName = `Amazon Product (${productId})`;
+            } else {
+              productName = 'Amazon Product';
+            }
+          } else if (url.hostname.includes('etsy.com')) {
+            productName = 'Etsy Product';
+          } else if (url.hostname.includes('walmart.com')) {
+            productName = 'Walmart Product';
+          } else if (url.hostname.includes('bestbuy.com')) {
+            productName = 'Best Buy Product';
+          } else {
+            const pathParts = url.pathname.split('/').filter(part => part.length > 0);
+            if (pathParts.length > 0) {
+              const lastPart = pathParts[pathParts.length - 1];
+              if (lastPart.length > 3) {
+                productName = lastPart.replace(/[-_]/g, ' ').replace(/\.[^.]*$/, '');
+              }
+            }
+          }
+        } catch (e) {
+          console.log('Failed to parse URL for product name:', img.originalImageUrl);
+        }
+        
         return {
           url: img.originalImageUrl,
           title: productName
         };
       });
-
-    // Wait for all product names to be fetched
-    const products = await Promise.all(productPromises);
 
     // Prepare moodboard data
     const moodboardData = {
@@ -1141,6 +1169,7 @@ document.getElementById('publish').addEventListener('click', async () => {
     console.log('Products to save:', products);
     console.log('Loaded images count:', loadedImages.length);
     console.log('Loaded images with URLs:', loadedImages.filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image').length);
+    console.log('Product URLs found:', loadedImages.filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image').map(img => img.originalImageUrl));
 
     // Publish to Supabase
     const result = await api.publishMoodboard(moodboardData);
@@ -1159,17 +1188,29 @@ document.getElementById('publish').addEventListener('click', async () => {
       console.log('No moodboard data returned from server');
     }
     
-    // Open the published page
+    // Open the published page (handle popup blocking)
     setTimeout(() => {
-      window.open(result.publicUrl, '_blank');
+      try {
+        const newWindow = window.open(result.publicUrl, '_blank');
+        if (!newWindow) {
+          // Popup was blocked, show a message
+          ui.showNotification('Popup blocked! Please manually visit: ' + result.publicUrl, 'info');
+        }
+      } catch (e) {
+        console.log('Failed to open popup:', e);
+        ui.showNotification('Please manually visit: ' + result.publicUrl, 'info');
+      }
     }, 1000);
 
-    // Only download if canvas export succeeded
+    // Only download if canvas export succeeded AND user wants it
     if (dataURL !== 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') {
-      const link = document.createElement('a');
-      link.download = `${moodboardTitle || 'moodboard'}.png`;
-      link.href = dataURL;
-      link.click();
+      // Ask user if they want to download
+      if (confirm('Would you like to download the moodboard image?')) {
+        const link = document.createElement('a');
+        link.download = `${moodboardTitle || 'moodboard'}.png`;
+        link.href = dataURL;
+        link.click();
+      }
     }
 
   } catch (error) {
