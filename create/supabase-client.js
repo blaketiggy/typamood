@@ -274,16 +274,27 @@ export const api = {
       const userId = user ? user.id : 'anon'
 
       console.log('Publishing moodboard with userId:', userId)
+      console.log('Moodboard data being sent to API:', {
+        title: moodboardData.title,
+        hasImage: !!moodboardData.image,
+        imageLength: moodboardData.image ? moodboardData.image.length : 0,
+        hasImagePath: !!moodboardData.imagePath,
+        productsCount: moodboardData.products ? moodboardData.products.length : 0
+      });
+
+      const requestBody = {
+        ...moodboardData,
+        userId: userId
+      };
+      
+      console.log('Full request body keys:', Object.keys(requestBody));
 
       const response = await fetch('/.netlify/functions/server/api/publish-moodboard', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...moodboardData,
-          userId: userId
-        })
+        body: JSON.stringify(requestBody)
       })
 
       console.log('Publish response status:', response.status)

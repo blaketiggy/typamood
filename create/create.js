@@ -1103,9 +1103,9 @@ document.getElementById('publish').addEventListener('click', async () => {
       }
       exportCtx.restore();
       
-      // Convert to data URL
-      dataURL = exportCanvas.toDataURL('image/png');
-      console.log('Successfully exported canvas to 600x600 PNG');
+      // Convert to data URL with compression
+      dataURL = exportCanvas.toDataURL('image/jpeg', 0.8); // Use JPEG with 80% quality for smaller size
+      console.log('Successfully exported canvas to 600x600 JPEG');
       
     } catch (corsError) {
       console.log('Canvas export failed due to CORS, using fallback');
@@ -1198,8 +1198,20 @@ document.getElementById('publish').addEventListener('click', async () => {
     console.log('Loaded images count:', loadedImages.length);
     console.log('Loaded images with URLs:', loadedImages.filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image').length);
     console.log('Product URLs found:', loadedImages.filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image').map(img => img.originalImageUrl));
+    console.log('Moodboard data being sent:', {
+      title: moodboardData.title,
+      hasImage: !!moodboardData.image,
+      imageLength: moodboardData.image ? moodboardData.image.length : 0,
+      hasImagePath: !!moodboardData.imagePath,
+      productsCount: moodboardData.products ? moodboardData.products.length : 0
+    });
 
     // Publish to Supabase
+    console.log('About to send moodboard data to server...');
+    console.log('Data URL length:', dataURL.length);
+    console.log('Title:', moodboardTitle);
+    console.log('Image path:', imagePath);
+    
     const result = await api.publishMoodboard(moodboardData);
     
     console.log('Publish result:', result);

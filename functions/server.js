@@ -278,17 +278,36 @@ exports.handler = async (event, context) => {
   if (path.includes('/api/publish-moodboard') || path.endsWith('/publish-moodboard')) {
     try {
       console.log('Publish moodboard requested');
+      console.log('Request body:', event.body);
       
       const moodboardData = JSON.parse(event.body || '{}');
+      console.log('Parsed moodboard data:', {
+        hasTitle: !!moodboardData.title,
+        title: moodboardData.title,
+        hasImage: !!moodboardData.image,
+        imageLength: moodboardData.image ? moodboardData.image.length : 0,
+        fields: Object.keys(moodboardData)
+      });
       
-      if (!moodboardData.title || !moodboardData.image) {
+      if (!moodboardData.title) {
         return {
           statusCode: 400,
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*'
           },
-          body: JSON.stringify({ error: 'Missing required fields' })
+          body: JSON.stringify({ error: 'Missing title field' })
+        };
+      }
+      
+      if (!moodboardData.image) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ error: 'Missing image field' })
         };
       }
 
