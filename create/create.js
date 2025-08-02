@@ -1230,44 +1230,58 @@ document.getElementById('publish').addEventListener('click', async () => {
       document.body.removeChild(moodboardContainer);
     }
     
-    // Save the image to the server
+    // Upload directly to Supabase storage
     let imagePath = null;
-    console.log('About to save canvas image...');
+    console.log('About to upload moodboard to Supabase...');
     console.log('Data URL length:', dataURL.length);
     console.log('Title:', moodboardTitle || 'Untitled Moodboard');
     
     try {
-      const saveImageResponse = await fetch('/.netlify/functions/server/api/save-canvas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: dataURL,
-          moodboardId: Date.now().toString(), // Generate a unique ID
-          title: moodboardTitle || 'Untitled Moodboard'
-        })
-      });
-
-      console.log('Save canvas response status:', saveImageResponse.status);
-      
-      if (saveImageResponse.ok) {
-        const saveResult = await saveImageResponse.json();
-        console.log('Save canvas response:', saveResult);
-        if (saveResult.success) {
-          imagePath = saveResult.imagePath;
-          console.log('Canvas image saved:', imagePath);
-        } else {
-          console.log('Save canvas failed:', saveResult.error);
+      // Convert data URL to blob
+      const dataURItoBlob = (dataURI) => {
+        const byteString = atob(dataURI.split(',')[1]);
+        const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
         }
-      } else {
-        console.log('Save canvas response not ok:', saveImageResponse.status);
-        const errorText = await saveImageResponse.text();
-        console.log('Save canvas error response:', errorText);
+        return new Blob([ab], { type: mimeString });
+      };
+      
+      const blob = dataURItoBlob(dataURL);
+      const filename = `moodboard-${Date.now()}_${(moodboardTitle || 'untitled').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`;
+      
+      console.log('Uploading to Supabase storage:', {
+        filename: filename,
+        blobSize: blob.size,
+        contentType: blob.type
+      });
+      
+      // Upload to Supabase using the client
+      const { data, error } = await supabase.storage
+        .from('moodboard-images')
+        .upload(filename, blob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+      
+      if (error) {
+        console.error('Supabase upload error:', error);
+        throw new Error(`Failed to upload to Supabase: ${error.message}`);
       }
-    } catch (saveError) {
-      console.error('Failed to save image:', saveError);
-      // Continue without image path if save fails
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('moodboard-images')
+        .getPublicUrl(filename);
+      
+      imagePath = urlData.publicUrl;
+      console.log('Moodboard uploaded successfully to Supabase:', imagePath);
+      
+    } catch (uploadError) {
+      console.error('Failed to upload to Supabase:', uploadError);
+      // Continue without image path if upload fails
     }
     
     // If we have a valid imagePath from Supabase and the canvas export failed, use the Supabase URL
