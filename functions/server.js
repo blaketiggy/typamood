@@ -161,8 +161,8 @@ app.delete('/api/moodboard/:id', async (req, res) => {
   }
 });
 
-// New endpoint to extract Amazon product images
-app.get('/api/extract-amazon-image', async (req, res) => {
+// New endpoint to extract product images from various retailers
+app.get('/api/extract-product-image', async (req, res) => {
   try {
     const { url } = req.query;
     
@@ -170,66 +170,176 @@ app.get('/api/extract-amazon-image', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
     
-    console.log('Extracting Amazon image from:', url);
+    console.log('Extracting product image from:', url);
     
-    // Extract ASIN from Amazon URL
-    const productId = url.match(/\/dp\/([A-Z0-9]{10})/);
-    if (!productId) {
-      return res.status(400).json({ error: 'Invalid Amazon URL' });
-    }
-    
-    const asin = productId[1];
-    console.log('Found ASIN:', asin);
-    
-    // Try different Amazon image URL formats
-    const imageUrls = [
-      `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
-      `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
-      `https://m.media-amazon.com/images/I/71${asin}.jpg`,
-      `https://m.media-amazon.com/images/I/${asin}.jpg`,
-      `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`
-    ];
-    
-    for (let imageUrl of imageUrls) {
-      try {
-        console.log('Trying Amazon image URL:', imageUrl);
-        const response = await fetch(imageUrl);
+    // Amazon extraction
+    if (url.includes('amazon.com')) {
+      const productId = url.match(/\/dp\/([A-Z0-9]{10})/);
+      if (productId) {
+        const asin = productId[1];
+        console.log('Found Amazon ASIN:', asin);
         
-        if (response.ok) {
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.startsWith('image/')) {
-            console.log('Found working Amazon image URL:', imageUrl);
-            return res.json({ imageUrl });
+        // Try different Amazon image URL formats
+        const imageUrls = [
+          `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
+          `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
+          `https://m.media-amazon.com/images/I/71${asin}.jpg`,
+          `https://m.media-amazon.com/images/I/${asin}.jpg`,
+          `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`,
+          `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.M.jpg`
+        ];
+        
+        for (let imageUrl of imageUrls) {
+          try {
+            console.log('Trying Amazon image URL:', imageUrl);
+            const response = await fetch(imageUrl);
+            
+            if (response.ok) {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.startsWith('image/')) {
+                console.log('Found working Amazon image URL:', imageUrl);
+                return res.json({ imageUrl });
+              }
+            }
+          } catch (e) {
+            console.log('Failed to check:', imageUrl);
           }
         }
-      } catch (e) {
-        console.log('Failed to check:', imageUrl);
       }
     }
     
-    // If direct image URLs fail, try to extract from the page HTML
+    // Walmart extraction
+    if (url.includes('walmart.com')) {
+      const productId = url.match(/\/ip\/([^\/\?]+)/);
+      if (productId) {
+        const walmartId = productId[1];
+        console.log('Found Walmart product ID:', walmartId);
+        
+        // Try Walmart image URL formats
+        const imageUrls = [
+          `https://i5.walmartimages.com/asr/${walmartId}.jpeg`,
+          `https://i5.walmartimages.com/asr/${walmartId}.jpg`,
+          `https://i5.walmartimages.com/seo/${walmartId}.jpeg`,
+          `https://i5.walmartimages.com/seo/${walmartId}.jpg`
+        ];
+        
+        for (let imageUrl of imageUrls) {
+          try {
+            console.log('Trying Walmart image URL:', imageUrl);
+            const response = await fetch(imageUrl);
+            
+            if (response.ok) {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.startsWith('image/')) {
+                console.log('Found working Walmart image URL:', imageUrl);
+                return res.json({ imageUrl });
+              }
+            }
+          } catch (e) {
+            console.log('Failed to check:', imageUrl);
+          }
+        }
+      }
+    }
+    
+    // Target extraction
+    if (url.includes('target.com')) {
+      const productId = url.match(/\/p\/([^\/\?]+)/);
+      if (productId) {
+        const targetId = productId[1];
+        console.log('Found Target product ID:', targetId);
+        
+        // Try Target image URL formats
+        const imageUrls = [
+          `https://target.scene7.com/is/image/Target/${targetId}`,
+          `https://target.scene7.com/is/image/Target/${targetId}?fmt=jpeg&wid=1000`
+        ];
+        
+        for (let imageUrl of imageUrls) {
+          try {
+            console.log('Trying Target image URL:', imageUrl);
+            const response = await fetch(imageUrl);
+            
+            if (response.ok) {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.startsWith('image/')) {
+                console.log('Found working Target image URL:', imageUrl);
+                return res.json({ imageUrl });
+              }
+            }
+          } catch (e) {
+            console.log('Failed to check:', imageUrl);
+          }
+        }
+      }
+    }
+    
+    // Best Buy extraction
+    if (url.includes('bestbuy.com')) {
+      const productId = url.match(/\/site\/([^\/\?]+)/);
+      if (productId) {
+        const bestbuyId = productId[1];
+        console.log('Found Best Buy product ID:', bestbuyId);
+        
+        // Try Best Buy image URL formats
+        const imageUrls = [
+          `https://www.bestbuy.com/site/images/${bestbuyId}.jpg`,
+          `https://www.bestbuy.com/site/images/${bestbuyId}_large.jpg`
+        ];
+        
+        for (let imageUrl of imageUrls) {
+          try {
+            console.log('Trying Best Buy image URL:', imageUrl);
+            const response = await fetch(imageUrl);
+            
+            if (response.ok) {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.startsWith('image/')) {
+                console.log('Found working Best Buy image URL:', imageUrl);
+                return res.json({ imageUrl });
+              }
+            }
+          } catch (e) {
+            console.log('Failed to check:', imageUrl);
+          }
+        }
+      }
+    }
+    
+    // Generic HTML extraction for any site
     console.log('Trying to extract from page HTML...');
     try {
       const response = await fetch(url);
       if (response.ok) {
         const html = await response.text();
         
-        // Look for Amazon product images
-        const imageMatches = html.match(/https:\/\/[^"]*\.amazon\.com\/images\/[^"]*\.(jpg|jpeg|png|webp)/gi);
+        // Look for common image patterns
+        const imageMatches = html.match(/https:\/\/[^"]*\.(jpg|jpeg|png|webp)/gi);
         if (imageMatches && imageMatches.length > 0) {
-          console.log('Found Amazon images in HTML:', imageMatches.slice(0, 3));
-          return res.json({ imageUrl: imageMatches[0] });
+          // Filter out small images and common non-product images
+          const productImages = imageMatches.filter(img => 
+            !img.includes('logo') && 
+            !img.includes('icon') && 
+            !img.includes('banner') &&
+            !img.includes('ad') &&
+            img.length > 50 // Filter out very short URLs
+          );
+          
+          if (productImages.length > 0) {
+            console.log('Found product images in HTML:', productImages.slice(0, 3));
+            return res.json({ imageUrl: productImages[0] });
+          }
         }
       }
     } catch (e) {
       console.log('HTML extraction failed:', e);
     }
     
-    console.log('Amazon image extraction failed');
+    console.log('Product image extraction failed');
     return res.status(404).json({ error: 'No valid image found' });
     
   } catch (error) {
-    console.error('Error extracting Amazon image:', error);
+    console.error('Error extracting product image:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

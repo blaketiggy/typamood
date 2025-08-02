@@ -573,60 +573,25 @@ async function addImageFromUrl() {
   }
 }
 
-// Function to extract product images from URLs
+// Extract product images from various retailers
 async function extractProductImage(url) {
   try {
-    // Check if it's already an image URL
-    if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      return url;
-    }
+    console.log('Extracting product image from:', url);
     
-    // For Amazon URLs, try to extract product images
-    if (url.includes('amazon.com') || url.includes('amazon.')) {
-      const amazonImageUrl = await extractAmazonImage(url);
-      if (amazonImageUrl) return amazonImageUrl;
-    }
+    // Use server endpoint to extract product images
+    const response = await fetch(`/api/extract-product-image?url=${encodeURIComponent(url)}`);
     
-    // For luxury brand sites like Dior, try to extract product images
-    if (url.includes('dior.com') || url.includes('dior.')) {
-      const diorImageUrl = await extractDiorImage(url);
-      if (diorImageUrl) return diorImageUrl;
-    }
-    
-    // Try proxy-based extraction for any website
-    const proxyImageUrl = await extractImageViaProxy(url);
-    if (proxyImageUrl) return proxyImageUrl;
-    
-    // For other product URLs, try common patterns
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname;
-    
-    // Common product image patterns
-    const imagePatterns = [
-      `${url}/image.jpg`,
-      `${url}/product-image.jpg`,
-      `${url}/main.jpg`,
-      `${url}/hero.jpg`,
-      `${url}/primary.jpg`,
-      `${url}/product.jpg`,
-      `${url}/img.jpg`,
-      `${url}/image.png`,
-      `${url}/product.png`
-    ];
-    
-    // Try to find a valid image
-    for (let pattern of imagePatterns) {
-      try {
-        const response = await fetch(pattern, { method: 'HEAD' });
-        if (response.ok) {
-          return pattern;
-        }
-      } catch (e) {
-        // Continue to next pattern
+    if (response.ok) {
+      const data = await response.json();
+      if (data.imageUrl) {
+        console.log('Server extracted product image URL:', data.imageUrl);
+        return data.imageUrl;
       }
+    } else {
+      console.log('Server extraction failed, status:', response.status);
     }
     
-    // If no pattern works, return the original URL and let the user handle it
+    console.log('Product image extraction failed, returning original URL');
     return url;
   } catch (error) {
     console.error('Error extracting product image:', error);
@@ -734,31 +699,7 @@ async function extractImageViaScreenshot(url) {
   }
 }
 
-// Extract Amazon product images
-async function extractAmazonImage(url) {
-  try {
-    console.log('Extracting Amazon image from:', url);
-    
-    // Use server endpoint to extract Amazon images
-    const response = await fetch(`/api/extract-amazon-image?url=${encodeURIComponent(url)}`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.imageUrl) {
-        console.log('Server extracted Amazon image URL:', data.imageUrl);
-        return data.imageUrl;
-      }
-    } else {
-      console.log('Server extraction failed, status:', response.status);
-    }
-    
-    console.log('Amazon image extraction failed, returning original URL');
-    return url;
-  } catch (error) {
-    console.error('Error extracting Amazon image:', error);
-    return url;
-  }
-}
+
 
 // Extract Dior product images
 async function extractDiorImage(url) {
