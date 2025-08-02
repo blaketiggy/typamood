@@ -1088,6 +1088,10 @@ document.getElementById('publish').addEventListener('click', async () => {
       canvasSize: { width: canvas.width, height: canvas.height }
     };
 
+    console.log('Publishing moodboard with image data length:', dataURL.length);
+    console.log('Image data preview:', dataURL.substring(0, 100) + '...');
+    console.log('Products to save:', products);
+
     // Publish to Supabase
     const result = await api.publishMoodboard(moodboardData);
     

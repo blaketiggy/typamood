@@ -161,6 +161,22 @@
                 const storageKeys = Object.keys(localStorage);
                 console.log('Checking localStorage keys:', storageKeys);
                 
+                // Show all moodboard data in localStorage
+                const moodboardKeys = storageKeys.filter(key => key.startsWith('moodboard_'));
+                console.log('Moodboard keys found:', moodboardKeys);
+                for (const key of moodboardKeys) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        console.log(`Moodboard data for ${key}:`, {
+                            title: data.title,
+                            imageLength: data.image ? data.image.length : 0,
+                            productsCount: data.products ? data.products.length : 0
+                        });
+                    } catch (e) {
+                        console.log('Failed to parse localStorage item:', key, e);
+                    }
+                }
+                
                 for (const key of storageKeys) {
                     if (key.startsWith('moodboard_')) {
                         try {
@@ -213,9 +229,10 @@
                     if (moodboardData.image && moodboardData.image !== 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') {
                         document.getElementById('moodboard-image').style.display = 'block';
                         document.getElementById('moodboard-image').src = moodboardData.image;
-                        console.log('Set canvas image');
+                        console.log('Set canvas image with data length:', moodboardData.image.length);
                     } else {
                         console.log('Using placeholder image (CORS blocked or no image)');
+                        console.log('Image data:', moodboardData.image ? moodboardData.image.substring(0, 100) + '...' : 'null');
                         document.getElementById('moodboard-image').style.display = 'block';
                         document.getElementById('moodboard-image').src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
                     }
