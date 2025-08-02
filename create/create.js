@@ -234,6 +234,19 @@ function drawCanvas() {
         imageObj.height
       );
       
+      // Check if the image was actually drawn by sampling a pixel
+      try {
+        const imageData = ctx.getImageData(imageObj.x, imageObj.y, 1, 1);
+        const pixel = imageData.data;
+        console.log(`Image ${index} pixel check:`, {
+          r: pixel[0], g: pixel[1], b: pixel[2], a: pixel[3],
+          isWhite: pixel[0] === 255 && pixel[1] === 255 && pixel[2] === 255,
+          isTransparent: pixel[3] === 0
+        });
+      } catch (e) {
+        console.log(`Could not sample pixel for image ${index}:`, e);
+      }
+      
       // Draw a test rectangle to show where the image should be
       ctx.strokeStyle = 'red';
       ctx.lineWidth = 2;
@@ -1115,6 +1128,7 @@ document.getElementById('publish').addEventListener('click', async () => {
       dataURL = mainCanvas.toDataURL('image/jpeg', 0.6);
       console.log('Direct export successful');
       console.log('Image data size:', dataURL.length, 'characters');
+      console.log('Image data starts with:', dataURL.substring(0, 50));
       
       // Check if it's the placeholder
       if (dataURL.length < 200) {
