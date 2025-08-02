@@ -553,7 +553,9 @@ async function addImageFromUrl() {
       if (img.crossOrigin === 'anonymous') {
         console.log('Retrying without CORS...');
         img.crossOrigin = null;
-        img.src = imageUrl; // Use original URL for fallback
+        // Add timestamp to prevent caching
+        const timestampedUrl = imageUrl + (imageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+        img.src = timestampedUrl; // Use timestamped URL for fallback
       } else {
         console.log('Image loading failed, trying screenshot approach...');
         
@@ -592,8 +594,10 @@ async function addImageFromUrl() {
       }
     };
     
-    console.log('Setting image src to:', imageUrl);
-    img.src = imageUrl;
+    // Add timestamp to prevent caching and fix CORS issues
+    const timestampedUrl = imageUrl + (imageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    console.log('Setting image src to:', timestampedUrl);
+    img.src = timestampedUrl;
     
   } catch (error) {
     console.error('=== ERROR IN ADD IMAGE FUNCTION ===');
@@ -1200,9 +1204,21 @@ document.getElementById('publish').addEventListener('click', async () => {
     }
     
     // If we have a valid imagePath from Supabase and the canvas export failed, use the Supabase URL
+    console.log('Checking if we should use Supabase URL:', {
+      hasImagePath: !!imagePath,
+      imagePath: imagePath,
+      dataURLLength: dataURL.length,
+      condition: imagePath && dataURL.length < 200
+    });
+    
     if (imagePath && dataURL.length < 200) {
       console.log('Using Supabase URL instead of failed canvas export');
       dataURL = imagePath; // Use the Supabase URL as the image data
+    } else {
+      console.log('Not using Supabase URL:', {
+        reason: !imagePath ? 'No imagePath' : 'dataURL too large',
+        dataURLLength: dataURL.length
+      });
     }
 
       // Collect product URLs with better names
