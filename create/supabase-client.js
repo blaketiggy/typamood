@@ -10,7 +10,7 @@ const createRealSupabaseClient = () => {
         try {
           console.log('Sending magic link to:', email)
           
-          const response = await fetch(`${supabaseUrl}/auth/v1/magiclink`, {
+          const response = await fetch(`${supabaseUrl}/auth/v1/otp`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -19,6 +19,7 @@ const createRealSupabaseClient = () => {
             },
             body: JSON.stringify({
               email,
+              type: 'magiclink',
               ...options
             })
           })
