@@ -153,20 +153,87 @@
                     return;
                 }
 
-                // For now, show a placeholder since we're not storing data
-                document.getElementById('moodboard-title').textContent = decodeURIComponent(moodboardTitle.replace(/_/g, ' '));
-                document.getElementById('moodboard-meta').textContent = 'Created with Typaboard';
-                
-                // Show placeholder image
-                document.getElementById('moodboard-image').style.display = 'block';
-                document.getElementById('moodboard-image').src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-                
-                // Hide placeholder text
-                document.getElementById('placeholder').style.display = 'none';
-                
-                // Show products section with placeholder
-                document.getElementById('products-section').style.display = 'block';
-                document.getElementById('products-grid').innerHTML = '<div class="product-card"><div class="placeholder">Products will appear here</div></div>';
+                // Try to get moodboard data from localStorage first
+                let moodboardData = null;
+                const storageKeys = Object.keys(localStorage);
+                for (const key of storageKeys) {
+                    if (key.startsWith('moodboard_')) {
+                        try {
+                            const data = JSON.parse(localStorage.getItem(key));
+                            if (data.title && data.title.toLowerCase().replace(/[^a-z0-9]/gi, '_') === moodboardTitle) {
+                                moodboardData = data;
+                                break;
+                            }
+                        } catch (e) {
+                            console.log('Failed to parse localStorage item:', key);
+                        }
+                    }
+                }
+
+                // If not found in localStorage, try to fetch from server
+                if (!moodboardData) {
+                    try {
+                        const response = await fetch(`/api/get-moodboard?title=${encodeURIComponent(moodboardTitle)}`);
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.success) {
+                                moodboardData = result.moodboard;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Failed to fetch from server:', e);
+                    }
+                }
+
+                // Display the moodboard
+                if (moodboardData) {
+                    // Set title
+                    document.getElementById('moodboard-title').textContent = moodboardData.title;
+                    document.getElementById('moodboard-meta').textContent = `Created with Typaboard • ${new Date(moodboardData.createdAt).toLocaleDateString()}`;
+                    
+                    // Set canvas image
+                    if (moodboardData.image && moodboardData.image !== 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') {
+                        document.getElementById('moodboard-image').style.display = 'block';
+                        document.getElementById('moodboard-image').src = moodboardData.image;
+                    }
+                    
+                    // Display products
+                    if (moodboardData.products && moodboardData.products.length > 0) {
+                        document.getElementById('products-section').style.display = 'block';
+                        const productsGrid = document.getElementById('products-grid');
+                        
+                        productsGrid.innerHTML = moodboardData.products.map(product => `
+                            <div class="product-card">
+                                <img class="product-image" src="${product.imageUrl}" alt="${product.title}" onerror="this.style.display='none'">
+                                <div class="product-title">${product.title}</div>
+                                <a href="${product.imageUrl}" class="product-link" target="_blank">View Product</a>
+                            </div>
+                        `).join('');
+                    } else {
+                        // Show placeholder if no products
+                        document.getElementById('products-section').style.display = 'block';
+                        document.getElementById('products-grid').innerHTML = '<div class="product-card"><div class="placeholder">No products added to this moodboard</div></div>';
+                    }
+                    
+                    // Hide placeholder text
+                    document.getElementById('placeholder').style.display = 'none';
+                    
+                } else {
+                    // Fallback: show basic info from URL
+                    document.getElementById('moodboard-title').textContent = decodeURIComponent(moodboardTitle.replace(/_/g, ' '));
+                    document.getElementById('moodboard-meta').textContent = 'Created with Typaboard';
+                    
+                    // Show placeholder image
+                    document.getElementById('moodboard-image').style.display = 'block';
+                    document.getElementById('moodboard-image').src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+                    
+                    // Hide placeholder text
+                    document.getElementById('placeholder').style.display = 'none';
+                    
+                    // Show products section with placeholder
+                    document.getElementById('products-section').style.display = 'block';
+                    document.getElementById('products-grid').innerHTML = '<div class="product-card"><div class="placeholder">Products will appear here</div></div>';
+                }
                 
             } catch (error) {
                 console.error('Error loading moodboard:', error);

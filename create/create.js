@@ -1030,6 +1030,13 @@ document.getElementById('publish').addEventListener('click', async () => {
     
     ui.showNotification('Moodboard published successfully!');
     
+    // Save moodboard data to localStorage for the published page
+    if (result.success && result.moodboardData) {
+      const storageKey = `moodboard_${result.moodboardId}`;
+      localStorage.setItem(storageKey, JSON.stringify(result.moodboardData));
+      console.log('Moodboard data saved to localStorage:', storageKey);
+    }
+    
     // Open the published page
     setTimeout(() => {
       window.open(result.publicUrl, '_blank');
