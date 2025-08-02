@@ -164,28 +164,49 @@ function resizeCanvas() {
 
 // Enhanced draw function with image support
 function drawCanvas() {
-  console.log('Drawing canvas with', loadedImages.length, 'images');
+  console.log('=== DRAWING CANVAS ===');
+  console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+  console.log('Number of images to draw:', loadedImages.length);
+  
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
   // Draw test rectangle only if no images
   if (loadedImages.length === 0) {
+    console.log('No images to draw, showing test rectangle');
     ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
     ctx.fillRect(10, 10, 200, 100);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.font = '16px Arial';
     ctx.fillText('Canvas is working!', 20, 50);
     ctx.fillText('Try pasting an image (Ctrl+V)', 20, 80);
+    return;
   }
   
   // Draw all images
   loadedImages.forEach((imageObj, index) => {
-    console.log('Drawing image', index, 'at position', imageObj.x, imageObj.y);
+    console.log(`Drawing image ${index}:`, {
+      position: { x: imageObj.x, y: imageObj.y },
+      size: { width: imageObj.width, height: imageObj.height },
+      rotation: imageObj.rotation,
+      scale: imageObj.scale,
+      selected: imageObj.selected
+    });
     
     try {
       ctx.save();
       ctx.translate(imageObj.x + imageObj.width / 2, imageObj.y + imageObj.height / 2);
       ctx.rotate(imageObj.rotation || 0);
       ctx.scale(imageObj.scale || 1, imageObj.scale || 1);
+      
+      console.log(`Drawing image ${index} at transformed position:`, {
+        translateX: imageObj.x + imageObj.width / 2,
+        translateY: imageObj.y + imageObj.height / 2,
+        drawX: -imageObj.width / 2,
+        drawY: -imageObj.height / 2,
+        drawWidth: imageObj.width,
+        drawHeight: imageObj.height
+      });
+      
       ctx.drawImage(
         imageObj.img,
         -imageObj.width / 2,
@@ -207,11 +228,13 @@ function drawCanvas() {
       }
       
       ctx.restore();
-      console.log('Image', index, 'drawn successfully');
+      console.log(`Image ${index} drawn successfully`);
     } catch (error) {
-      console.error('Error drawing image', index, ':', error);
+      console.error(`Error drawing image ${index}:`, error);
     }
   });
+  
+  console.log('Canvas drawing completed');
 }
 
 // Initialize
@@ -337,7 +360,9 @@ async function addImageFromUrl() {
     return;
   }
 
-  console.log('Adding image from URL:', url);
+  console.log('=== ADDING IMAGE FROM URL ===');
+  console.log('Input URL:', url);
+  console.log('Current input mode:', currentInputMode);
 
   // Show loading state
   addUrlBtn.textContent = '...';
@@ -348,19 +373,23 @@ async function addImageFromUrl() {
     
     // For direct image URLs, use as is
     if (currentInputMode === 'image') {
-      imageUrl = url;
+      console.log('Using direct image URL:', imageUrl);
     } else {
       // For product URLs, try to extract image
+      console.log('Extracting product image from:', url);
       imageUrl = await extractProductImage(url);
+      console.log('Extracted image URL:', imageUrl);
     }
     
-    console.log('Image URL to load:', imageUrl);
+    console.log('Final image URL to load:', imageUrl);
     
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
     img.onload = function() {
-      console.log('Image loaded successfully:', img.width, 'x', img.height);
+      console.log('=== IMAGE LOADED SUCCESSFULLY ===');
+      console.log('Image dimensions:', img.width, 'x', img.height);
+      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
       
       // Calculate relative size (percentage of canvas)
       const canvasArea = canvas.width * canvas.height;
@@ -389,7 +418,7 @@ async function addImageFromUrl() {
         }
       }
       
-      console.log('Resized to:', newWidth, 'x', newHeight);
+      console.log('Resized dimensions:', newWidth, 'x', newHeight);
       
       // Create image object with relative positioning
       const imageObj = {
@@ -411,11 +440,14 @@ async function addImageFromUrl() {
       imageObj.x = (canvas.width * imageObj.xPercent) - (newWidth / 2);
       imageObj.y = (canvas.height * imageObj.yPercent) - (newHeight / 2);
       
-      console.log('Adding image object:', imageObj);
+      console.log('Image object created:', imageObj);
+      console.log('Absolute position:', imageObj.x, imageObj.y);
+      
       loadedImages.push(imageObj);
-      console.log('Total images:', loadedImages.length);
+      console.log('Total images in array:', loadedImages.length);
       
       urlInput.value = '';
+      console.log('Calling drawCanvas...');
       drawCanvas();
       
       // Reset button
@@ -426,39 +458,38 @@ async function addImageFromUrl() {
     };
     
     img.onerror = function() {
+      console.error('=== IMAGE LOAD ERROR ===');
       console.error('Failed to load image from:', imageUrl);
+      console.error('Error details:', img.error);
       
       // Try without CORS if it failed
       if (img.crossOrigin === 'anonymous') {
         console.log('Retrying without CORS...');
         img.crossOrigin = null;
         img.src = imageUrl;
-        return;
-      }
-      
-      // Try to provide helpful error message
-      let errorMessage = 'Failed to load image. ';
-      if (imageUrl.includes('dior.com')) {
-        errorMessage += 'Dior images are blocked due to CORS restrictions. Try using "Direct Image" mode with a public image URL.';
-      } else if (imageUrl.includes('amazon.com')) {
-        errorMessage += 'Amazon image extraction failed. Please try again.';
-      } else if (currentInputMode === 'product') {
-        errorMessage += 'Product URL extraction failed. Try switching to "Direct Image" mode and use a public image URL.';
       } else {
-        errorMessage += 'The image URL may be invalid or blocked. Try a different image URL.';
+        console.error('Image loading failed completely');
+        
+        // Reset button
+        addUrlBtn.textContent = '+';
+        addUrlBtn.disabled = false;
+        
+        showNotification('Failed to load image. Please try a different URL.', 'error');
       }
-      
-      showNotification(errorMessage, 'error');
-      addUrlBtn.textContent = '+';
-      addUrlBtn.disabled = false;
     };
     
+    console.log('Setting image src to:', imageUrl);
     img.src = imageUrl;
+    
   } catch (error) {
-    console.error('Error processing URL:', error);
-    showNotification('Error processing URL. Please try again.', 'error');
+    console.error('=== ERROR IN ADD IMAGE FUNCTION ===');
+    console.error('Error adding image from URL:', error);
+    
+    // Reset button
     addUrlBtn.textContent = '+';
     addUrlBtn.disabled = false;
+    
+    showNotification('Error processing URL. Please try again.', 'error');
   }
 }
 
