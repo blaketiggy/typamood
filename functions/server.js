@@ -1,172 +1,48 @@
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
-const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
+const fetch = require('node-fetch');
+
+console.log('Server starting...');
 
 const app = express();
-
-// Middleware
-app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// CORS headers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || 'https://jjjfmsszuiofinrobgln.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZtc3N6dWlvZmlucm9iZ2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDEwNDcsImV4cCI6MjA2OTY3NzA0N30.qRqM6YsrNgquw-2aA6WYzMqoq_PM82M5vz_rQ89GH94';
 
-console.log('Initializing Supabase client with URL:', supabaseUrl);
+console.log('Supabase URL:', supabaseUrl);
 console.log('Supabase key available:', !!supabaseKey);
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// API endpoint to publish moodboard
-app.post('/api/publish-moodboard', async (req, res) => {
-  try {
-    console.log('Publish moodboard request received');
-    const { title, image, products, createdAt, canvasSize, userId } = req.body;
-    
-    console.log('Request data:', {
-      title,
-      hasImage: !!image,
-      productsCount: products?.length,
-      userId
-    });
-    
-    // Allow both authenticated users and anonymous users
-    const finalUserId = userId === 'anon' ? null : userId;
-    console.log('Final user ID:', finalUserId);
+console.log('Supabase client created');
 
-    // Generate unique ID for the moodboard
-    const moodboardId = uuidv4();
-    const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    console.log('Generated moodboard ID:', moodboardId);
-    console.log('Safe title:', safeTitle);
-    
-    // For now, skip image upload to avoid storage issues
-    // Just use the data URL directly
-    const imageUrl = image; // Use the data URL as-is
-    
-    console.log('Using data URL for image (skipping storage upload)');
-
-    // Save moodboard to database
-    console.log('Saving moodboard to database');
-    const { data: moodboardData, error: dbError } = await supabase
-      .from('moodboards')
-      .insert({
-        id: moodboardId,
-        user_id: finalUserId, // null for anonymous users
-        title: title,
-        image_url: imageUrl, // Store the data URL directly
-        products: products,
-        canvas_size: canvasSize,
-        public_url: `/user/${safeTitle}`,
-        is_public: true
-      })
-      .select()
-      .single();
-
-    if (dbError) {
-      console.error('Database error:', dbError);
-      return res.status(500).json({ error: 'Failed to save moodboard: ' + dbError.message });
-    }
-
-    console.log('Moodboard saved successfully');
-
-    res.json({
-      success: true,
-      publicUrl: `/user/${safeTitle}`,
-      moodboardId: moodboardId,
-      imageUrl: imageUrl
-    });
-
-  } catch (error) {
-    console.error('Error publishing moodboard:', error);
-    res.status(500).json({ error: 'Failed to publish moodboard: ' + error.message });
-  }
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  console.log('Health check requested');
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Get user's moodboards
-app.get('/api/moodboards', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    
-    // Handle anonymous users
-    const finalUserId = userId === 'anon' ? null : userId;
-
-    const { data: moodboards, error } = await supabase
-      .from('moodboards')
-      .select('*')
-      .eq('user_id', finalUserId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Database error:', error);
-      return res.status(500).json({ error: 'Failed to fetch moodboards' });
-    }
-
-    res.json({ moodboards });
-  } catch (error) {
-    console.error('Error fetching moodboards:', error);
-    res.status(500).json({ error: 'Failed to fetch moodboards' });
-  }
-});
-
-// Get public moodboard by title
-app.get('/api/moodboard/:title', async (req, res) => {
-  try {
-    const { title } = req.params;
-    
-    const { data: moodboard, error } = await supabase
-      .from('moodboards')
-      .select('*')
-      .eq('public_url', `/user/${title}`)
-      .eq('is_public', true)
-      .single();
-
-    if (error || !moodboard) {
-      return res.status(404).json({ error: 'Moodboard not found' });
-    }
-
-    res.json({ moodboard });
-  } catch (error) {
-    console.error('Error fetching moodboard:', error);
-    res.status(500).json({ error: 'Failed to fetch moodboard' });
-  }
-});
-
-// Delete moodboard
-app.delete('/api/moodboard/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.body;
-    
-    // Handle anonymous users
-    const finalUserId = userId === 'anon' ? null : userId;
-
-    // Delete from database (skip storage deletion for now)
-    const { error: dbError } = await supabase
-      .from('moodboards')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', finalUserId);
-
-    if (dbError) {
-      console.error('Database error:', dbError);
-      return res.status(500).json({ error: 'Failed to delete moodboard' });
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting moodboard:', error);
-    res.status(500).json({ error: 'Failed to delete moodboard' });
-  }
-});
-
-// New endpoint to extract product images from various retailers
+// Product image extraction endpoint
 app.get('/api/extract-product-image', async (req, res) => {
   try {
+    console.log('Product image extraction requested');
     const { url } = req.query;
     
     if (!url) {
+      console.log('No URL provided');
       return res.status(400).json({ error: 'URL parameter is required' });
     }
     
@@ -179,14 +55,12 @@ app.get('/api/extract-product-image', async (req, res) => {
         const asin = productId[1];
         console.log('Found Amazon ASIN:', asin);
         
-        // Try different Amazon image URL formats
+        // Try Amazon image URL formats
         const imageUrls = [
           `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
           `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
           `https://m.media-amazon.com/images/I/71${asin}.jpg`,
-          `https://m.media-amazon.com/images/I/${asin}.jpg`,
-          `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`,
-          `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.M.jpg`
+          `https://m.media-amazon.com/images/I/${asin}.jpg`
         ];
         
         for (let imageUrl of imageUrls) {
@@ -202,7 +76,7 @@ app.get('/api/extract-product-image', async (req, res) => {
               }
             }
           } catch (e) {
-            console.log('Failed to check:', imageUrl);
+            console.log('Failed to check:', imageUrl, e.message);
           }
         }
       }
@@ -215,12 +89,9 @@ app.get('/api/extract-product-image', async (req, res) => {
         const walmartId = productId[1];
         console.log('Found Walmart product ID:', walmartId);
         
-        // Try Walmart image URL formats
         const imageUrls = [
           `https://i5.walmartimages.com/asr/${walmartId}.jpeg`,
-          `https://i5.walmartimages.com/asr/${walmartId}.jpg`,
-          `https://i5.walmartimages.com/seo/${walmartId}.jpeg`,
-          `https://i5.walmartimages.com/seo/${walmartId}.jpg`
+          `https://i5.walmartimages.com/asr/${walmartId}.jpg`
         ];
         
         for (let imageUrl of imageUrls) {
@@ -236,77 +107,13 @@ app.get('/api/extract-product-image', async (req, res) => {
               }
             }
           } catch (e) {
-            console.log('Failed to check:', imageUrl);
+            console.log('Failed to check:', imageUrl, e.message);
           }
         }
       }
     }
     
-    // Target extraction
-    if (url.includes('target.com')) {
-      const productId = url.match(/\/p\/([^\/\?]+)/);
-      if (productId) {
-        const targetId = productId[1];
-        console.log('Found Target product ID:', targetId);
-        
-        // Try Target image URL formats
-        const imageUrls = [
-          `https://target.scene7.com/is/image/Target/${targetId}`,
-          `https://target.scene7.com/is/image/Target/${targetId}?fmt=jpeg&wid=1000`
-        ];
-        
-        for (let imageUrl of imageUrls) {
-          try {
-            console.log('Trying Target image URL:', imageUrl);
-            const response = await fetch(imageUrl);
-            
-            if (response.ok) {
-              const contentType = response.headers.get('content-type');
-              if (contentType && contentType.startsWith('image/')) {
-                console.log('Found working Target image URL:', imageUrl);
-                return res.json({ imageUrl });
-              }
-            }
-          } catch (e) {
-            console.log('Failed to check:', imageUrl);
-          }
-        }
-      }
-    }
-    
-    // Best Buy extraction
-    if (url.includes('bestbuy.com')) {
-      const productId = url.match(/\/site\/([^\/\?]+)/);
-      if (productId) {
-        const bestbuyId = productId[1];
-        console.log('Found Best Buy product ID:', bestbuyId);
-        
-        // Try Best Buy image URL formats
-        const imageUrls = [
-          `https://www.bestbuy.com/site/images/${bestbuyId}.jpg`,
-          `https://www.bestbuy.com/site/images/${bestbuyId}_large.jpg`
-        ];
-        
-        for (let imageUrl of imageUrls) {
-          try {
-            console.log('Trying Best Buy image URL:', imageUrl);
-            const response = await fetch(imageUrl);
-            
-            if (response.ok) {
-              const contentType = response.headers.get('content-type');
-              if (contentType && contentType.startsWith('image/')) {
-                console.log('Found working Best Buy image URL:', imageUrl);
-                return res.json({ imageUrl });
-              }
-            }
-          } catch (e) {
-            console.log('Failed to check:', imageUrl);
-          }
-        }
-      }
-    }
-    
-    // Generic HTML extraction for any site
+    // Generic HTML extraction
     console.log('Trying to extract from page HTML...');
     try {
       const response = await fetch(url);
@@ -322,7 +129,7 @@ app.get('/api/extract-product-image', async (req, res) => {
             !img.includes('icon') && 
             !img.includes('banner') &&
             !img.includes('ad') &&
-            img.length > 50 // Filter out very short URLs
+            img.length > 50
           );
           
           if (productImages.length > 0) {
@@ -332,7 +139,7 @@ app.get('/api/extract-product-image', async (req, res) => {
         }
       }
     } catch (e) {
-      console.log('HTML extraction failed:', e);
+      console.log('HTML extraction failed:', e.message);
     }
     
     console.log('Product image extraction failed');
@@ -344,21 +151,90 @@ app.get('/api/extract-product-image', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  console.log('Health check requested');
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    supabaseUrl: supabaseUrl,
-    supabaseKeyAvailable: !!supabaseKey
-  });
+// Moodboard publishing endpoint
+app.post('/api/publish-moodboard', async (req, res) => {
+  try {
+    const { title, images, userId } = req.body;
+    
+    if (!title || !images || !userId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    console.log('Publishing moodboard:', { title, imageCount: images.length, userId });
+    
+    const { data, error } = await supabase
+      .from('moodboards')
+      .insert([
+        {
+          title: title,
+          images: images,
+          user_id: userId
+        }
+      ])
+      .select();
+    
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Failed to save moodboard' });
+    }
+    
+    console.log('Moodboard saved successfully:', data[0].id);
+    res.json({ id: data[0].id, message: 'Moodboard published successfully' });
+    
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-// Handle all other routes
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Not found' });
+// Get user's moodboards
+app.get('/api/moodboards/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const { data, error } = await supabase
+      .from('moodboards')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Failed to fetch moodboards' });
+    }
+    
+    res.json(data);
+    
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
+
+// Delete moodboard
+app.delete('/api/moodboards/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('moodboards')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Database error:', error);
+      return res.status(500).json({ error: 'Failed to delete moodboard' });
+    }
+    
+    res.json({ message: 'Moodboard deleted successfully' });
+    
+  } catch (error) {
+    console.error('Server error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+console.log('Server setup complete');
 
 // Export for Netlify Functions
 exports.handler = app; 
