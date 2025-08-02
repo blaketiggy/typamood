@@ -199,12 +199,19 @@
         let isSignUp = false;
 
         // Debug: Log current URL and parameters
+        console.log('=== AUTH PAGE DEBUG ===');
         console.log('Current URL:', window.location.href);
         console.log('URL search params:', window.location.search);
         console.log('URL hash:', window.location.hash);
+        console.log('Has access_token in search:', window.location.search.includes('access_token'));
+        console.log('Has access_token in hash:', window.location.hash.includes('access_token'));
+        console.log('Has error in search:', window.location.search.includes('error'));
+        console.log('Has error in hash:', window.location.hash.includes('error'));
 
         // Handle magic link callback
         async function handleMagicLinkCallback() {
+            console.log('=== MAGIC LINK CALLBACK HANDLER ===');
+            
             const urlParams = new URLSearchParams(window.location.search);
             const accessToken = urlParams.get('access_token');
             const refreshToken = urlParams.get('refresh_token');
@@ -212,10 +219,10 @@
             const errorDescription = urlParams.get('error_description');
 
             console.log('Magic link callback detected');
-            console.log('Access token:', accessToken ? 'present' : 'missing');
-            console.log('Refresh token:', refreshToken ? 'present' : 'missing');
-            console.log('Error:', error);
-            console.log('Error description:', errorDescription);
+            console.log('Access token from search:', accessToken ? 'present' : 'missing');
+            console.log('Refresh token from search:', refreshToken ? 'present' : 'missing');
+            console.log('Error from search:', error);
+            console.log('Error description from search:', errorDescription);
 
             if (error) {
                 showError(`Authentication failed: ${errorDescription || error}`);
@@ -223,6 +230,7 @@
             }
 
             if (accessToken && refreshToken) {
+                console.log('Found tokens in search params');
                 // Store the tokens in the correct format
                 const session = {
                     access_token: accessToken,
@@ -239,10 +247,11 @@
                 
                 // Redirect to create page after a short delay
                 setTimeout(() => {
+                    console.log('Redirecting to /create/');
                     window.location.href = '/create/';
                 }, 2000);
             } else {
-                console.log('No tokens found in URL, checking for hash params...');
+                console.log('No tokens found in search params, checking hash params...');
                 
                 // Check hash parameters (alternative format)
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -253,6 +262,7 @@
                 console.log('Hash refresh token:', hashRefreshToken ? 'present' : 'missing');
                 
                 if (hashAccessToken && hashRefreshToken) {
+                    console.log('Found tokens in hash params');
                     const session = {
                         access_token: hashAccessToken,
                         refresh_token: hashRefreshToken,
@@ -267,19 +277,33 @@
                     showSuccess('Successfully signed in! Redirecting to create page...');
                     
                     setTimeout(() => {
+                        console.log('Redirecting to /create/');
                         window.location.href = '/create/';
                     }, 2000);
                 } else {
+                    console.log('No tokens found in either search or hash params');
                     showError('No authentication tokens found in URL');
                 }
             }
         }
 
         // Check for magic link callback on page load
-        if (window.location.search.includes('access_token') || 
-            window.location.search.includes('error') ||
-            window.location.hash.includes('access_token')) {
+        const hasAccessTokenInSearch = window.location.search.includes('access_token');
+        const hasAccessTokenInHash = window.location.hash.includes('access_token');
+        const hasErrorInSearch = window.location.search.includes('error');
+        const hasErrorInHash = window.location.hash.includes('error');
+        
+        console.log('Checking for magic link callback:');
+        console.log('- Has access_token in search:', hasAccessTokenInSearch);
+        console.log('- Has access_token in hash:', hasAccessTokenInHash);
+        console.log('- Has error in search:', hasErrorInSearch);
+        console.log('- Has error in hash:', hasErrorInHash);
+        
+        if (hasAccessTokenInSearch || hasErrorInSearch || hasAccessTokenInHash || hasErrorInHash) {
+            console.log('Magic link callback detected, handling...');
             handleMagicLinkCallback();
+        } else {
+            console.log('No magic link callback detected');
         }
 
         // Toggle between sign in and sign up
