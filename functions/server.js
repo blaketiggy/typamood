@@ -622,6 +622,66 @@ exports.handler = async (event, context) => {
     }
   }
   
+  // Image proxy endpoint to handle CORS issues
+  if (path.includes('/api/image-proxy') || path.endsWith('/image-proxy')) {
+    try {
+      console.log('Image proxy requested');
+      
+      const { url } = event.queryStringParameters || {};
+      
+      if (!url) {
+        console.log('No URL provided for image proxy');
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ error: 'URL parameter required' })
+        };
+      }
+
+      console.log('Proxying image from:', url);
+
+      // Fetch the image through our proxy
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      
+      const imageBuffer = await response.buffer();
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
+        },
+        body: imageBuffer.toString('base64'),
+        isBase64Encoded: true
+      };
+      
+    } catch (error) {
+      console.error('Image proxy error:', error);
+      return {
+        statusCode: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ 
+          error: 'Failed to proxy image',
+          message: error.message
+        })
+      };
+    }
+  }
+  
   // Default response for unknown endpoints
   return {
     statusCode: 404,
@@ -632,7 +692,7 @@ exports.handler = async (event, context) => {
     body: JSON.stringify({ 
       error: 'Endpoint not found',
       path: path,
-      availableEndpoints: ['/api/health', '/api/extract-product-image', '/api/export-canvas']
+      availableEndpoints: ['/api/health', '/api/extract-product-image', '/api/export-canvas', '/api/image-proxy']
     })
   };
 }; 

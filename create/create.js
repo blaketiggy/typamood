@@ -1131,10 +1131,36 @@ document.getElementById('publish').addEventListener('click', async () => {
       border-radius: 6px;
     `;
     
-    // Add all images as HTML elements
-    loadedImages.forEach((img, index) => {
+    // Add images through proxy to avoid CORS issues
+    console.log('Adding', loadedImages.length, 'images to HTML moodboard via proxy...');
+    
+    for (let i = 0; i < loadedImages.length; i++) {
+      const img = loadedImages[i];
+      console.log('Adding image', i, ':', {
+        originalUrl: img.originalImageUrl,
+        x: img.x,
+        y: img.y,
+        width: img.width,
+        height: img.height,
+        rotation: img.rotation,
+        scale: img.scale
+      });
+      
       const imgElement = document.createElement('img');
-      imgElement.src = img.originalImageUrl + (img.originalImageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+      
+      // Use proxy for external images, direct URL for local/pasted images
+      if (img.originalImageUrl && !img.originalImageUrl.startsWith('data:')) {
+        // External image - use proxy
+        const proxyUrl = `/.netlify/functions/server/api/image-proxy?url=${encodeURIComponent(img.originalImageUrl)}`;
+        imgElement.src = proxyUrl;
+        console.log('Using proxy URL for image', i, ':', proxyUrl);
+      } else {
+        // Local/pasted image - use direct URL
+        imgElement.src = img.originalImageUrl;
+        console.log('Using direct URL for image', i, ':', img.originalImageUrl);
+      }
+      
+      imgElement.crossOrigin = 'anonymous';
       imgElement.style.cssText = `
         position: absolute;
         left: ${img.x}px;
@@ -1145,8 +1171,13 @@ document.getElementById('publish').addEventListener('click', async () => {
         transform-origin: center;
         object-fit: cover;
       `;
+      
+      // Add load/error handlers for debugging
+      imgElement.onload = () => console.log('Image', i, 'loaded successfully in HTML moodboard');
+      imgElement.onerror = () => console.log('Image', i, 'failed to load in HTML moodboard');
+      
       moodboardContainer.appendChild(imgElement);
-    });
+    }
     
     // Temporarily add to DOM (hidden)
     moodboardContainer.style.position = 'absolute';
@@ -1163,8 +1194,10 @@ document.getElementById('publish').addEventListener('click', async () => {
         scale: 1,
         backgroundColor: '#ffffff',
         useCORS: true,
-        allowTaint: true,
-        logging: false
+        allowTaint: false,
+        logging: true,
+        foreignObjectRendering: true,
+        imageTimeout: 15000
       });
       
       dataURL = screenshot.toDataURL('image/jpeg', 0.6);
@@ -1380,3 +1413,5 @@ document.getElementById('remove-bg').addEventListener('click', () => {
 });
 
 console.log('All event listeners attached');
+
+
