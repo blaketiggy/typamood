@@ -441,6 +441,70 @@ exports.handler = async (event, context) => {
     }
   }
   
+  // Screenshot endpoint to bypass CORS issues
+  if (path.includes('/api/screenshot') || path.endsWith('/screenshot')) {
+    try {
+      console.log('Screenshot requested');
+      
+      const { url } = event.queryStringParameters || {};
+      
+      if (!url) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ error: 'URL parameter required' })
+        };
+      }
+
+      console.log('Taking screenshot of:', url);
+
+      // Use a free screenshot service (no API key required)
+      const screenshotUrl = `https://api.screenshotone.com/take?url=${encodeURIComponent(url)}&viewport_width=1280&viewport_height=1024&format=jpg&full_page=false&delay=2`;
+      
+      const response = await fetch(screenshotUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Screenshot failed: ${response.status}`);
+      }
+      
+      const imageBuffer = await response.buffer();
+      const base64Image = imageBuffer.toString('base64');
+      
+      console.log('Screenshot successful, size:', imageBuffer.length);
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          imageData: `data:image/jpeg;base64,${base64Image}`,
+          message: 'Screenshot captured successfully'
+        })
+      };
+      
+    } catch (error) {
+      console.error('Error taking screenshot:', error);
+      
+      return {
+        statusCode: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: error.message
+        })
+      };
+    }
+  }
+
   // Save canvas image endpoint
   if (path.includes('/api/save-canvas') || path.endsWith('/save-canvas')) {
     try {

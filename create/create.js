@@ -555,13 +555,40 @@ async function addImageFromUrl() {
         img.crossOrigin = null;
         img.src = imageUrl; // Use original URL for fallback
       } else {
-        console.error('Image loading failed completely');
+        console.log('Image loading failed, trying screenshot approach...');
         
-        // Reset button
-        addUrlBtn.textContent = '+';
-        addUrlBtn.disabled = false;
-        
-        showNotification('Failed to load image. Please try a different URL.', 'error');
+        // Try screenshot approach as last resort
+        extractImageViaScreenshot(url).then(screenshotData => {
+          if (screenshotData) {
+            console.log('Screenshot approach successful');
+            const screenshotImg = new Image();
+            screenshotImg.onload = function() {
+              // Use the screenshot image instead
+              img.src = screenshotData;
+              img.onload(); // Trigger the onload handler
+            };
+            screenshotImg.onerror = function() {
+              console.error('Screenshot image also failed to load');
+              // Reset button
+              addUrlBtn.textContent = '+';
+              addUrlBtn.disabled = false;
+              showNotification('Failed to load image. Please try a different URL.', 'error');
+            };
+            screenshotImg.src = screenshotData;
+          } else {
+            console.error('Image loading failed completely');
+            // Reset button
+            addUrlBtn.textContent = '+';
+            addUrlBtn.disabled = false;
+            showNotification('Failed to load image. Please try a different URL.', 'error');
+          }
+        }).catch(screenshotError => {
+          console.error('Screenshot approach also failed:', screenshotError);
+          // Reset button
+          addUrlBtn.textContent = '+';
+          addUrlBtn.disabled = false;
+          showNotification('Failed to load image. Please try a different URL.', 'error');
+        });
       }
     };
     
@@ -760,12 +787,24 @@ async function extractImageViaProxy(url) {
 // Alternative method using a screenshot service
 async function extractImageViaScreenshot(url) {
   try {
-    // Use a screenshot service to get the page image
-    const screenshotUrl = `https://api.apiflash.com/v1/urltoimage?access_key=YOUR_API_KEY&url=${encodeURIComponent(url)}&format=jpeg&quality=85&width=800&height=600`;
+    console.log('Using screenshot service for:', url);
     
-    // Note: This requires an API key from a service like ApiFlash
-    // For now, we'll return null but you can implement this with a real API key
-    return null;
+    // Use our server screenshot endpoint
+    const screenshotUrl = `/.netlify/functions/server/api/screenshot?url=${encodeURIComponent(url)}`;
+    
+    const response = await fetch(screenshotUrl);
+    if (!response.ok) {
+      throw new Error(`Screenshot failed: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (data.success && data.imageData) {
+      console.log('Screenshot successful, returning image data');
+      return data.imageData; // Return base64 image data
+    }
+    
+    throw new Error('Screenshot failed to return image data');
+    
   } catch (error) {
     console.error('Error extracting image via screenshot:', error);
     return null;
@@ -1119,7 +1158,7 @@ document.getElementById('publish').addEventListener('click', async () => {
         dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       }
     }
-
+    
     // Save the image to the server
     let imagePath = null;
     console.log('About to save canvas image...');
@@ -1158,6 +1197,12 @@ document.getElementById('publish').addEventListener('click', async () => {
     } catch (saveError) {
       console.error('Failed to save image:', saveError);
       // Continue without image path if save fails
+    }
+    
+    // If we have a valid imagePath from Supabase and the canvas export failed, use the Supabase URL
+    if (imagePath && dataURL.length < 200) {
+      console.log('Using Supabase URL instead of failed canvas export');
+      dataURL = imagePath; // Use the Supabase URL as the image data
     }
 
       // Collect product URLs with better names
@@ -1211,6 +1256,13 @@ document.getElementById('publish').addEventListener('click', async () => {
         createdAt: new Date().toISOString(),
         canvasSize: { width: canvas.width, height: canvas.height }
       };
+      
+      console.log('Final moodboard data:', {
+        title: moodboardData.title,
+        imageType: imagePath ? 'Supabase URL' : 'Base64',
+        imageLength: moodboardData.image ? moodboardData.image.length : 0,
+        imagePath: imagePath
+      });
 
     console.log('Publishing moodboard with image data length:', dataURL.length);
     console.log('Image data preview:', dataURL.substring(0, 100) + '...');
