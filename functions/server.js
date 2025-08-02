@@ -10,26 +10,43 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || 'https://jjjfmsszuiofinrobgln.supabase.co';
+const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZtc3N6dWlvZmlucm9iZ2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDEwNDcsImV4cCI6MjA2OTY3NzA0N30.qRqM6YsrNgquw-2aA6WYzMqoq_PM82M5vz_rQ89GH94';
+
+console.log('Initializing Supabase client with URL:', supabaseUrl);
+console.log('Supabase key available:', !!supabaseKey);
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // API endpoint to publish moodboard
 app.post('/api/publish-moodboard', async (req, res) => {
   try {
+    console.log('Publish moodboard request received');
     const { title, image, products, createdAt, canvasSize, userId } = req.body;
+    
+    console.log('Request data:', {
+      title,
+      hasImage: !!image,
+      productsCount: products?.length,
+      userId
+    });
     
     // Allow both authenticated users and anonymous users
     const finalUserId = userId === 'anon' ? null : userId;
+    console.log('Final user ID:', finalUserId);
 
     // Generate unique ID for the moodboard
     const moodboardId = uuidv4();
     const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    console.log('Generated moodboard ID:', moodboardId);
+    console.log('Safe title:', safeTitle);
     
     // Upload image to Supabase Storage
     const imageData = image.replace(/^data:image\/png;base64,/, '');
     const imageBuffer = Buffer.from(imageData, 'base64');
     const imageFileName = `${moodboardId}.png`;
+    
+    console.log('Uploading image to storage:', imageFileName);
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('moodboard-images')
@@ -40,15 +57,20 @@ app.post('/api/publish-moodboard', async (req, res) => {
 
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      return res.status(500).json({ error: 'Failed to upload image' });
+      return res.status(500).json({ error: 'Failed to upload image: ' + uploadError.message });
     }
+
+    console.log('Image uploaded successfully');
 
     // Get public URL for the uploaded image
     const { data: { publicUrl } } = supabase.storage
       .from('moodboard-images')
       .getPublicUrl(imageFileName);
 
+    console.log('Public URL generated:', publicUrl);
+
     // Save moodboard to database
+    console.log('Saving moodboard to database');
     const { data: moodboardData, error: dbError } = await supabase
       .from('moodboards')
       .insert({
@@ -66,8 +88,10 @@ app.post('/api/publish-moodboard', async (req, res) => {
 
     if (dbError) {
       console.error('Database error:', dbError);
-      return res.status(500).json({ error: 'Failed to save moodboard' });
+      return res.status(500).json({ error: 'Failed to save moodboard: ' + dbError.message });
     }
+
+    console.log('Moodboard saved successfully');
 
     res.json({
       success: true,
@@ -78,7 +102,7 @@ app.post('/api/publish-moodboard', async (req, res) => {
 
   } catch (error) {
     console.error('Error publishing moodboard:', error);
-    res.status(500).json({ error: 'Failed to publish moodboard' });
+    res.status(500).json({ error: 'Failed to publish moodboard: ' + error.message });
   }
 });
 
@@ -170,7 +194,13 @@ app.delete('/api/moodboard/:id', async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  console.log('Health check requested');
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    supabaseUrl: supabaseUrl,
+    supabaseKeyAvailable: !!supabaseKey
+  });
 });
 
 // Handle all other routes
