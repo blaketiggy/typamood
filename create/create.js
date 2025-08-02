@@ -573,7 +573,7 @@ async function addImageFromUrl() {
   }
 }
 
-// Extract product images from various retailers (server-side Puppeteer)
+// Extract product images from various retailers (simple client-side approach)
 async function extractProductImage(url) {
   try {
     console.log('Extracting product image from:', url);
@@ -583,21 +583,80 @@ async function extractProductImage(url) {
       return url;
     }
     
-    // Use server endpoint to extract product images
-    const response = await fetch(`/api/extract-product-image?url=${encodeURIComponent(url)}`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.imageUrl) {
-        console.log('Server extracted product image:', data.message);
-        return data.imageUrl;
-      } else {
-        console.log('Server extraction failed:', data.message);
+    // Amazon extraction - use known working URL patterns
+    if (url.includes('amazon.com')) {
+      const productId = url.match(/\/dp\/([A-Z0-9]{10})/);
+      if (productId) {
+        const asin = productId[1];
+        console.log('Found Amazon ASIN:', asin);
+        
+        // Try Amazon image URL formats that we know work
+        const imageUrls = [
+          `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
+          `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
+          `https://m.media-amazon.com/images/I/71${asin}.jpg`,
+          `https://m.media-amazon.com/images/I/${asin}.jpg`
+        ];
+        
+        // Test each URL to see if it loads
+        for (let imageUrl of imageUrls) {
+          try {
+            console.log('Trying Amazon image URL:', imageUrl);
+            const img = new Image();
+            const loadPromise = new Promise((resolve, reject) => {
+              img.onload = () => resolve(imageUrl);
+              img.onerror = () => reject();
+            });
+            
+            img.src = imageUrl;
+            const result = await Promise.race([loadPromise, new Promise(resolve => setTimeout(() => resolve(null), 2000))]);
+            
+            if (result) {
+              console.log('Found working Amazon image URL:', result);
+              return result;
+            }
+          } catch (e) {
+            console.log('Failed to check:', imageUrl);
+          }
+        }
       }
-    } else {
-      console.log('Server extraction failed, status:', response.status);
     }
     
+    // Etsy extraction - use server endpoint since it works
+    if (url.includes('etsy.com')) {
+      try {
+        console.log('Using server for Etsy extraction');
+        const response = await fetch(`/api/extract-product-image?url=${encodeURIComponent(url)}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.imageUrl) {
+            console.log('Server extracted Etsy image:', data.message);
+            return data.imageUrl;
+          }
+        }
+      } catch (e) {
+        console.log('Etsy server extraction failed:', e);
+      }
+    }
+    
+    // For other sites, try server endpoint as fallback
+    try {
+      console.log('Trying server extraction for:', url);
+      const response = await fetch(`/api/extract-product-image?url=${encodeURIComponent(url)}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.imageUrl) {
+          console.log('Server extracted image:', data.message);
+          return data.imageUrl;
+        }
+      }
+    } catch (e) {
+      console.log('Server extraction failed:', e);
+    }
+    
+    // If all else fails, return the original URL
     console.log('Product image extraction failed, returning original URL');
     return url;
   } catch (error) {
