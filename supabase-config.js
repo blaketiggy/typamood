@@ -1,6 +1,6 @@
 // Supabase configuration
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jjjfmsszuiofinrobgln.supabase.co'
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_lgn5i16l4EJYRfv3GLGlVA_Q7rYuLiv'
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZtc3N6dWlvZmlucm9iZ2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDEwNDcsImV4cCI6MjA2OTY3NzA0N30.qRqM6YsrNgquw-2aA6WYzMqoq_PM82M5vz_rQ89GH94'
 
 // Database schema for moodboards
 const MOODBOARD_SCHEMA = `
