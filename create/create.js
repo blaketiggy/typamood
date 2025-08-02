@@ -425,8 +425,19 @@ async function addImageFromUrl() {
     
     console.log('Final image URL to load:', imageUrl);
     
+    // Use proxy for external images to avoid CORS issues
+    let finalImageUrl = imageUrl;
+    if (imageUrl && !imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:')) {
+      // External image - use proxy
+      finalImageUrl = `/.netlify/functions/server/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+      console.log('Using proxy URL for image loading:', finalImageUrl);
+    } else {
+      console.log('Using direct URL for image loading:', finalImageUrl);
+    }
+    
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    img.src = finalImageUrl;
     
     img.onload = function() {
       console.log('=== IMAGE LOADED SUCCESSFULLY ===');
@@ -434,6 +445,7 @@ async function addImageFromUrl() {
       console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
       console.log('Image src:', img.src);
       console.log('Original URL:', imageUrl);
+      console.log('Final image URL used:', finalImageUrl);
       
       // Check if image has actual data
       const tempCanvas = document.createElement('canvas');
@@ -567,7 +579,7 @@ async function addImageFromUrl() {
         console.log('Retrying without CORS...');
         img.crossOrigin = null;
         // Add timestamp to prevent caching
-        const timestampedUrl = imageUrl + (imageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+        const timestampedUrl = finalImageUrl + (finalImageUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
         img.src = timestampedUrl; // Use timestamped URL for fallback
       } else {
         console.log('Image loading failed, trying screenshot approach...');
