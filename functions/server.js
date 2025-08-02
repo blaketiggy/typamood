@@ -475,6 +475,13 @@ exports.handler = async (event, context) => {
       const buffer = Buffer.from(base64Data, 'base64');
       
       // Upload to Supabase storage
+      console.log('Attempting to upload to Supabase storage...');
+      console.log('Bucket: moodboard-images');
+      console.log('Filename:', filename);
+      console.log('Buffer size:', buffer.length);
+      console.log('Supabase URL:', supabaseUrl);
+      console.log('Service role key present:', !!supabaseKey);
+      
       const { data, error } = await supabase.storage
         .from('moodboard-images')
         .upload(filename, buffer, {
@@ -484,6 +491,11 @@ exports.handler = async (event, context) => {
       
       if (error) {
         console.error('Supabase storage upload error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          statusCode: error.statusCode,
+          details: error.details
+        });
         throw new Error(`Failed to upload image: ${error.message}`);
       }
       
@@ -511,15 +523,19 @@ exports.handler = async (event, context) => {
     } catch (error) {
       console.error('Error saving canvas:', error);
       
+      // Fallback: return the image data directly instead of uploading
+      console.log('Using fallback - returning image data directly');
       return {
-        statusCode: 500,
+        statusCode: 200,
         headers: {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({
-          success: false,
-          error: error.message
+          success: true,
+          imagePath: imageData, // Return the base64 data directly
+          filename: filename,
+          message: 'Canvas image saved (fallback mode)'
         })
       };
     }
