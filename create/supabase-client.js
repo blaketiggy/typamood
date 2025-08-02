@@ -83,6 +83,9 @@ const createSimpleSupabaseClient = () => {
         try {
           // Check for stored session
           const sessionData = localStorage.getItem('supabase.auth.token')
+          console.log('=== GET USER DEBUG ===')
+          console.log('Session data from localStorage:', sessionData ? 'present' : 'missing')
+          
           if (!sessionData) {
             console.log('No auth session found')
             return { data: { user: null } }
@@ -91,7 +94,9 @@ const createSimpleSupabaseClient = () => {
           let session
           try {
             session = JSON.parse(sessionData)
-          } catch {
+            console.log('Parsed session:', session)
+          } catch (error) {
+            console.log('Failed to parse session, using as token:', error)
             // Fallback for old format
             const token = sessionData
             session = { access_token: token }
@@ -161,6 +166,20 @@ const createSimpleSupabaseClient = () => {
 // Initialize the client
 const supabase = createSimpleSupabaseClient()
 console.log('Simple Supabase client initialized')
+
+// Test function to manually check auth state
+export const testAuth = () => {
+  console.log('=== TESTING AUTH STATE ===')
+  console.log('localStorage supabase.auth.token:', localStorage.getItem('supabase.auth.token'))
+  console.log('localStorage supabase.auth.refresh_token:', localStorage.getItem('supabase.auth.refresh_token'))
+  
+  // Try to get user
+  supabase.auth.getUser().then(result => {
+    console.log('getUser result:', result)
+  }).catch(error => {
+    console.error('getUser error:', error)
+  })
+}
 
 // Auth functions
 export const auth = {

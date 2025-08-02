@@ -98,45 +98,34 @@
             line-height: 1.5;
         }
 
-        .anonymous-notice {
-            background: #f0f7ff;
-            border: 1px solid #2383e2;
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 16px;
             border-radius: 6px;
-            padding: 16px;
-            margin: 24px 0;
-            text-align: left;
-        }
-
-        .anonymous-notice h4 {
-            color: #2383e2;
-            margin-bottom: 8px;
+            color: white;
             font-size: 14px;
-            font-weight: 600;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .anonymous-notice p {
-            color: #787774;
-            font-size: 13px;
-            margin: 0;
+        .notification.success {
+            background: #0f7b0f;
         }
 
-        @media (max-width: 768px) {
-            .landing-container {
-                margin: 40px 20px;
-                padding: 24px;
-            }
+        .notification.error {
+            background: #d73a49;
+        }
 
-            .landing-header h1 {
-                font-size: 2rem;
-            }
-
-            .cta-buttons {
-                flex-direction: column;
-            }
-
-            .features {
-                grid-template-columns: 1fr;
-            }
+        .notification button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
         }
     </style>
 </head>
@@ -144,12 +133,7 @@
     <div class="landing-container">
         <div class="landing-header">
             <h1>Typaboard</h1>
-            <p>Create beautiful moodboards with drag-and-drop ease. Start creating instantly or sign in to save your work.</p>
-        </div>
-
-        <div class="anonymous-notice">
-            <h4>🎨 Start Creating Instantly</h4>
-            <p>You can create moodboards without signing up! Your work will be saved temporarily. Sign in to keep your moodboards permanently.</p>
+            <p>Create beautiful moodboards with drag-and-drop simplicity. No account required to start creating.</p>
         </div>
 
         <div class="cta-buttons">
@@ -159,20 +143,20 @@
 
         <div class="features">
             <div class="feature">
-                <h3>🎨 Easy Image Management</h3>
-                <p>Add images from URLs, paste from clipboard, or drag and drop. Support for product URLs from Amazon, Dior, and more.</p>
+                <h3>🎨 Drag & Drop</h3>
+                <p>Easily add images by dragging them onto your canvas or pasting URLs from your favorite stores.</p>
             </div>
             <div class="feature">
-                <h3>✋ Intuitive Controls</h3>
-                <p>Freeform manipulation with touch gestures on mobile and mouse controls on desktop. Resize, rotate, and position images naturally.</p>
+                <h3>📱 Mobile Friendly</h3>
+                <p>Create moodboards on any device with touch and mouse gesture support.</p>
             </div>
             <div class="feature">
-                <h3>🚀 Instant Publishing</h3>
-                <p>Publish your moodboards to beautiful static pages with product links. Share with anyone via a simple URL.</p>
+                <h3>🔗 Smart Links</h3>
+                <p>Automatically extract product information from Amazon, Dior, and other major retailers.</p>
             </div>
             <div class="feature">
-                <h3>📧 Passwordless Sign In</h3>
-                <p>Sign in with just your email - no passwords needed. Get a magic link and you're ready to go.</p>
+                <h3>🚀 Instant Sharing</h3>
+                <p>Share your moodboards instantly with a simple link. No downloads required.</p>
             </div>
         </div>
     </div>
@@ -180,10 +164,132 @@
     <script type="module">
         import { auth } from './create/supabase-client.js';
 
+        // Debug: Log current URL and parameters
+        console.log('=== HOMEPAGE DEBUG ===');
+        console.log('Current URL:', window.location.href);
+        console.log('URL search params:', window.location.search);
+        console.log('URL hash:', window.location.hash);
+        console.log('Has access_token in search:', window.location.search.includes('access_token'));
+        console.log('Has access_token in hash:', window.location.hash.includes('access_token'));
+
+        // Handle magic link callback
+        async function handleMagicLinkCallback() {
+            console.log('=== MAGIC LINK CALLBACK HANDLER (HOMEPAGE) ===');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const accessToken = urlParams.get('access_token');
+            const refreshToken = urlParams.get('refresh_token');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+
+            console.log('Magic link callback detected on homepage');
+            console.log('Access token from search:', accessToken ? 'present' : 'missing');
+            console.log('Refresh token from search:', refreshToken ? 'present' : 'missing');
+            console.log('Error from search:', error);
+            console.log('Error description from search:', errorDescription);
+
+            if (error) {
+                showNotification(`Authentication failed: ${errorDescription || error}`, 'error');
+                return;
+            }
+
+            if (accessToken && refreshToken) {
+                console.log('Found tokens in search params on homepage');
+                // Store the tokens in the correct format
+                const session = {
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                    expires_at: Date.now() + (3600 * 1000) // 1 hour from now
+                };
+                
+                localStorage.setItem('supabase.auth.token', JSON.stringify(session));
+                localStorage.setItem('supabase.auth.refresh_token', refreshToken);
+                
+                console.log('Authentication tokens stored successfully on homepage');
+                console.log('Session stored:', session);
+                showNotification('Successfully signed in! Redirecting to create page...', 'success');
+                
+                // Redirect to create page after a short delay
+                setTimeout(() => {
+                    console.log('Redirecting to /create/ from homepage');
+                    window.location.href = '/create/';
+                }, 2000);
+            } else {
+                console.log('No tokens found in search params on homepage, checking hash params...');
+                
+                // Check hash parameters (alternative format)
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const hashAccessToken = hashParams.get('access_token');
+                const hashRefreshToken = hashParams.get('refresh_token');
+                
+                console.log('Hash access token:', hashAccessToken ? 'present' : 'missing');
+                console.log('Hash refresh token:', hashRefreshToken ? 'present' : 'missing');
+                
+                if (hashAccessToken && hashRefreshToken) {
+                    console.log('Found tokens in hash params on homepage');
+                    const session = {
+                        access_token: hashAccessToken,
+                        refresh_token: hashRefreshToken,
+                        expires_at: Date.now() + (3600 * 1000) // 1 hour from now
+                    };
+                    
+                    localStorage.setItem('supabase.auth.token', JSON.stringify(session));
+                    localStorage.setItem('supabase.auth.refresh_token', hashRefreshToken);
+                    
+                    console.log('Authentication tokens from hash stored successfully on homepage');
+                    console.log('Session stored:', session);
+                    showNotification('Successfully signed in! Redirecting to create page...', 'success');
+                    
+                    setTimeout(() => {
+                        console.log('Redirecting to /create/ from homepage');
+                        window.location.href = '/create/';
+                    }, 2000);
+                } else {
+                    console.log('No tokens found in either search or hash params on homepage');
+                    showNotification('No authentication tokens found in URL', 'error');
+                }
+            }
+        }
+
+        // Check for magic link callback on page load
+        const hasAccessTokenInSearch = window.location.search.includes('access_token');
+        const hasAccessTokenInHash = window.location.hash.includes('access_token');
+        const hasErrorInSearch = window.location.search.includes('error');
+        const hasErrorInHash = window.location.hash.includes('error');
+        
+        console.log('Checking for magic link callback on homepage:');
+        console.log('- Has access_token in search:', hasAccessTokenInSearch);
+        console.log('- Has access_token in hash:', hasAccessTokenInHash);
+        console.log('- Has error in search:', hasErrorInSearch);
+        console.log('- Has error in hash:', hasErrorInHash);
+        
+        if (hasAccessTokenInSearch || hasErrorInSearch || hasAccessTokenInHash || hasErrorInHash) {
+            console.log('Magic link callback detected on homepage, handling...');
+            handleMagicLinkCallback();
+        } else {
+            console.log('No magic link callback detected on homepage');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div')
+            notification.className = `notification ${type}`
+            notification.innerHTML = `
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()">×</button>
+            `
+            document.body.appendChild(notification)
+            
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove()
+                }
+            }, 5000)
+        }
+
         // Check if user is already signed in
         auth.getCurrentUser().then(user => {
             if (user) {
-                // Redirect to create page if already signed in
+                console.log('User already signed in, redirecting to create page');
                 window.location.href = '/create/';
             }
         });
