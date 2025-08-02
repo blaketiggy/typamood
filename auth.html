@@ -198,6 +198,11 @@
 
         let isSignUp = false;
 
+        // Debug: Log current URL and parameters
+        console.log('Current URL:', window.location.href);
+        console.log('URL search params:', window.location.search);
+        console.log('URL hash:', window.location.hash);
+
         // Handle magic link callback
         async function handleMagicLinkCallback() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -229,11 +234,37 @@
                 setTimeout(() => {
                     window.location.href = '/create/';
                 }, 2000);
+            } else {
+                console.log('No tokens found in URL, checking for hash params...');
+                
+                // Check hash parameters (alternative format)
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const hashAccessToken = hashParams.get('access_token');
+                const hashRefreshToken = hashParams.get('refresh_token');
+                
+                console.log('Hash access token:', hashAccessToken ? 'present' : 'missing');
+                console.log('Hash refresh token:', hashRefreshToken ? 'present' : 'missing');
+                
+                if (hashAccessToken && hashRefreshToken) {
+                    localStorage.setItem('supabase.auth.token', hashAccessToken);
+                    localStorage.setItem('supabase.auth.refresh_token', hashRefreshToken);
+                    
+                    console.log('Authentication tokens from hash stored successfully');
+                    showSuccess('Successfully signed in! Redirecting to create page...');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/create/';
+                    }, 2000);
+                } else {
+                    showError('No authentication tokens found in URL');
+                }
             }
         }
 
         // Check for magic link callback on page load
-        if (window.location.search.includes('access_token') || window.location.search.includes('error')) {
+        if (window.location.search.includes('access_token') || 
+            window.location.search.includes('error') ||
+            window.location.hash.includes('access_token')) {
             handleMagicLinkCallback();
         }
 
