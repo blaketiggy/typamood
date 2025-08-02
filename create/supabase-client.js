@@ -132,8 +132,15 @@ const createSimpleSupabaseClient = () => {
       onAuthStateChange: (callback) => {
         // Simple auth state change listener
         const checkAuth = async () => {
-          const { data: { user } } = await this.getUser()
-          callback('TOKEN_REFRESHED', { user })
+          try {
+            // Get the auth object to call getUser
+            const auth = supabase.auth
+            const { data: { user } } = await auth.getUser()
+            callback('TOKEN_REFRESHED', { user })
+          } catch (error) {
+            console.error('Auth state check error:', error)
+            callback('TOKEN_REFRESHED', { user: null })
+          }
         }
         
         // Check auth state periodically
