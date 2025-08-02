@@ -1062,125 +1062,61 @@ document.getElementById('publish').addEventListener('click', async () => {
   const stopLoading = ui.showLoading(publishBtn);
 
   try {
-    // Create a clean canvas for export (to avoid CORS issues)
-    console.log('Creating clean canvas for export...');
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 400;
-    exportCanvas.height = 400;
-    const exportCtx = exportCanvas.getContext('2d');
-    
-    // Fill with white background
-    exportCtx.fillStyle = '#ffffff';
-    exportCtx.fillRect(0, 0, 400, 400);
-    
-    // Draw all loaded images onto the clean canvas
-    console.log('Drawing', loadedImages.length, 'images to export canvas...');
-    for (let i = 0; i < loadedImages.length; i++) {
-      const img = loadedImages[i];
-      console.log('Processing image', i, ':', {
-        hasElement: !!img.element,
-        elementComplete: img.element ? img.element.complete : false,
-        elementNaturalWidth: img.element ? img.element.naturalWidth : 0,
-        elementNaturalHeight: img.element ? img.element.naturalHeight : 0,
-        x: img.x,
-        y: img.y,
-        width: img.width,
-        height: img.height
-      });
-      
-      if (img.element && img.element.complete && img.element.naturalWidth > 0) {
-        try {
-          // Apply the same transformations as the main canvas
-          exportCtx.save();
-          exportCtx.translate(img.x + img.width / 2, img.y + img.height / 2);
-          exportCtx.rotate(img.rotation || 0);
-          exportCtx.scale(img.scale || 1, img.scale || 1);
-          exportCtx.drawImage(
-            img.element,
-            -img.width / 2,
-            -img.height / 2,
-            img.width,
-            img.height
-          );
-          exportCtx.restore();
-          console.log('Drew image', i, 'successfully');
-        } catch (drawError) {
-          console.log('Failed to draw image', i, ':', drawError);
-        }
-      } else {
-        console.log('Skipping image', i, '- not ready for export');
-      }
-    }
-    
-    // Export the clean canvas
+    // Try to export the main canvas directly first
+    console.log('Trying to export main canvas...');
+    const mainCanvas = document.getElementById('canvas');
     let dataURL;
+    
     try {
-      console.log('Exporting clean canvas...');
-      dataURL = exportCanvas.toDataURL('image/jpeg', 0.6);
-      console.log('Export successful');
+      // Try direct export first
+      dataURL = mainCanvas.toDataURL('image/jpeg', 0.6);
+      console.log('Direct export successful');
       console.log('Image data size:', dataURL.length, 'characters');
       
       // Check if it's the placeholder
       if (dataURL.length < 200) {
-        console.log('WARNING: Export produced small image, trying HTML2Canvas fallback...');
-        throw new Error('Export produced small image');
+        console.log('WARNING: Direct export produced small image, trying HTML2Canvas...');
+        throw new Error('Direct export produced small image');
       }
       
-    } catch (exportError) {
-      console.log('Clean canvas export failed, trying main canvas export...');
+    } catch (directError) {
+      console.log('Direct export failed, trying HTML2Canvas...');
       
       try {
-        // Try the main canvas as a fallback
-        const mainCanvas = document.getElementById('canvas');
-        dataURL = mainCanvas.toDataURL('image/jpeg', 0.6);
-        console.log('Main canvas export successful');
+        // Check if HTML2Canvas is available
+        if (typeof html2canvas === 'undefined') {
+          throw new Error('HTML2Canvas library not loaded');
+        }
+        
+        const canvasElement = document.getElementById('canvas');
+        if (!canvasElement) {
+          throw new Error('Canvas element not found');
+        }
+        
+        console.log('Taking screenshot with HTML2Canvas...');
+        const screenshot = await html2canvas(canvasElement, {
+          width: 400,
+          height: 400,
+          scale: 1,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+          logging: false
+        });
+        
+        dataURL = screenshot.toDataURL('image/jpeg', 0.4);
+        console.log('HTML2Canvas screenshot successful');
         console.log('Image data size:', dataURL.length, 'characters');
         
         // Check if it's the placeholder
         if (dataURL.length < 200) {
-          console.log('WARNING: Main canvas also produced small image, trying HTML2Canvas...');
-          throw new Error('Main canvas produced small image');
+          console.log('WARNING: HTML2Canvas also produced small image');
         }
         
-      } catch (mainCanvasError) {
-        console.log('Main canvas export failed, trying HTML2Canvas...');
-        
-        try {
-          // Check if HTML2Canvas is available
-          if (typeof html2canvas === 'undefined') {
-            throw new Error('HTML2Canvas library not loaded');
-          }
-          
-          const canvasElement = document.getElementById('canvas');
-          if (!canvasElement) {
-            throw new Error('Canvas element not found');
-          }
-          
-          console.log('Taking screenshot with HTML2Canvas...');
-          const screenshot = await html2canvas(canvasElement, {
-            width: 400,
-            height: 400,
-            scale: 1,
-            backgroundColor: '#ffffff',
-            useCORS: true,
-            allowTaint: true,
-            logging: false
-          });
-          
-          dataURL = screenshot.toDataURL('image/jpeg', 0.4);
-          console.log('HTML2Canvas screenshot successful');
-          console.log('Image data size:', dataURL.length, 'characters');
-          
-          // Check if it's the placeholder
-          if (dataURL.length < 200) {
-            console.log('WARNING: HTML2Canvas also produced small image');
-          }
-          
-        } catch (screenshotError) {
-          console.log('HTML2Canvas also failed:', screenshotError);
-          // Create a simple placeholder image
-          dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-        }
+      } catch (screenshotError) {
+        console.log('HTML2Canvas also failed:', screenshotError);
+        // Create a simple placeholder image
+        dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       }
     }
 
@@ -1201,10 +1137,15 @@ document.getElementById('publish').addEventListener('click', async () => {
 
       if (saveImageResponse.ok) {
         const saveResult = await saveImageResponse.json();
+        console.log('Save canvas response:', saveResult);
         if (saveResult.success) {
           imagePath = saveResult.imagePath;
           console.log('Canvas image saved:', imagePath);
+        } else {
+          console.log('Save canvas failed:', saveResult.error);
         }
+      } else {
+        console.log('Save canvas response not ok:', saveImageResponse.status);
       }
     } catch (saveError) {
       console.error('Failed to save image:', saveError);
@@ -1256,7 +1197,7 @@ document.getElementById('publish').addEventListener('click', async () => {
       // Prepare moodboard data with image data
       const moodboardData = {
         title: moodboardTitle || 'Untitled Moodboard',
-        image: dataURL, // Send the actual image data
+        image: imagePath || dataURL, // Use Supabase URL if available, otherwise base64
         imagePath: imagePath, // Also include the saved image path
         products: products,
         createdAt: new Date().toISOString(),
