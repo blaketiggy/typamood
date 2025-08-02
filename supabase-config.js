@@ -1,6 +1,6 @@
 // Supabase configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'your-supabase-url'
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key'
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://jjjfmsszuiofinrobgln.supabase.co'
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_lgn5i16l4EJYRfv3GLGlVA_Q7rYuLiv'
 
 // Database schema for moodboards
 const MOODBOARD_SCHEMA = `
