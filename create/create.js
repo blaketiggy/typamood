@@ -1122,6 +1122,10 @@ document.getElementById('publish').addEventListener('click', async () => {
 
     // Save the image to the server
     let imagePath = null;
+    console.log('About to save canvas image...');
+    console.log('Data URL length:', dataURL.length);
+    console.log('Title:', moodboardTitle || 'Untitled Moodboard');
+    
     try {
       const saveImageResponse = await fetch('/.netlify/functions/server/api/save-canvas', {
         method: 'POST',
@@ -1135,6 +1139,8 @@ document.getElementById('publish').addEventListener('click', async () => {
         })
       });
 
+      console.log('Save canvas response status:', saveImageResponse.status);
+      
       if (saveImageResponse.ok) {
         const saveResult = await saveImageResponse.json();
         console.log('Save canvas response:', saveResult);
@@ -1146,6 +1152,8 @@ document.getElementById('publish').addEventListener('click', async () => {
         }
       } else {
         console.log('Save canvas response not ok:', saveImageResponse.status);
+        const errorText = await saveImageResponse.text();
+        console.log('Save canvas error response:', errorText);
       }
     } catch (saveError) {
       console.error('Failed to save image:', saveError);
