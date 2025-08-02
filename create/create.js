@@ -1182,10 +1182,11 @@ document.getElementById('publish').addEventListener('click', async () => {
           };
         });
 
-      // Prepare moodboard data with image path instead of image data
+      // Prepare moodboard data with image data
       const moodboardData = {
         title: moodboardTitle || 'Untitled Moodboard',
-        imagePath: imagePath, // Use the saved image path
+        image: dataURL, // Send the actual image data
+        imagePath: imagePath, // Also include the saved image path
         products: products,
         createdAt: new Date().toISOString(),
         canvasSize: { width: canvas.width, height: canvas.height }
