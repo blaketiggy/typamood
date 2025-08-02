@@ -1055,35 +1055,59 @@ document.getElementById('publish').addEventListener('click', async () => {
   const stopLoading = ui.showLoading(publishBtn);
 
   try {
-    // Try to export canvas directly first, fallback to HTML2Canvas if CORS fails
+    // Create a clean canvas for export (to avoid CORS issues)
+    console.log('Creating clean canvas for export...');
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 400;
+    exportCanvas.height = 400;
+    const exportCtx = exportCanvas.getContext('2d');
+    
+    // Fill with white background
+    exportCtx.fillStyle = '#ffffff';
+    exportCtx.fillRect(0, 0, 400, 400);
+    
+    // Draw all loaded images onto the clean canvas
+    console.log('Drawing', loadedImages.length, 'images to export canvas...');
+    for (let i = 0; i < loadedImages.length; i++) {
+      const img = loadedImages[i];
+      if (img.element && img.element.complete) {
+        try {
+          // Apply the same transformations as the main canvas
+          exportCtx.save();
+          exportCtx.translate(img.x + img.width / 2, img.y + img.height / 2);
+          exportCtx.rotate(img.rotation || 0);
+          exportCtx.scale(img.scale || 1, img.scale || 1);
+          exportCtx.drawImage(
+            img.element,
+            -img.width / 2,
+            -img.height / 2,
+            img.width,
+            img.height
+          );
+          exportCtx.restore();
+          console.log('Drew image', i, 'successfully');
+        } catch (drawError) {
+          console.log('Failed to draw image', i, ':', drawError);
+        }
+      }
+    }
+    
+    // Export the clean canvas
     let dataURL;
     try {
-      console.log('Trying direct canvas export...');
-      const canvas = document.getElementById('canvas');
-      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-      console.log('Canvas has content:', canvas.width > 0 && canvas.height > 0);
-      
-      // Check if canvas has any content
-      const ctx = canvas.getContext('2d');
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const hasContent = imageData.data.some(pixel => pixel !== 0);
-      console.log('Canvas has non-empty pixels:', hasContent);
-      console.log('Loaded images count:', loadedImages.length);
-      console.log('Images on canvas:', loadedImages.map(img => ({ x: img.x, y: img.y, width: img.width, height: img.height })));
-      
-      dataURL = canvas.toDataURL('image/jpeg', 0.6);
-      console.log('Direct export successful');
+      console.log('Exporting clean canvas...');
+      dataURL = exportCanvas.toDataURL('image/jpeg', 0.6);
+      console.log('Export successful');
       console.log('Image data size:', dataURL.length, 'characters');
-      console.log('Image data starts with:', dataURL.substring(0, 50));
       
       // Check if it's the placeholder
       if (dataURL.length < 200) {
-        console.log('WARNING: Image data seems too small, might be placeholder');
-        throw new Error('Canvas export produced placeholder image');
+        console.log('WARNING: Export produced small image, trying HTML2Canvas fallback...');
+        throw new Error('Export produced small image');
       }
       
-    } catch (corsError) {
-      console.log('Direct export failed due to CORS, trying HTML2Canvas...');
+    } catch (exportError) {
+      console.log('Clean canvas export failed, trying HTML2Canvas...');
       
       try {
         // Check if HTML2Canvas is available
