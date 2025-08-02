@@ -412,14 +412,6 @@ async function addImageFromUrl() {
     
     console.log('Final image URL to load:', imageUrl);
     
-    // Use CORS proxy for external images to avoid tainting canvas
-    let finalImageUrl = imageUrl;
-    if (!imageUrl.startsWith('data:') && !imageUrl.startsWith('blob:')) {
-      // Use a CORS proxy for external images
-      finalImageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(imageUrl)}`;
-      console.log('Using CORS proxy for image:', finalImageUrl);
-    }
-    
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
@@ -429,7 +421,6 @@ async function addImageFromUrl() {
       console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
       console.log('Image src:', img.src);
       console.log('Original URL:', imageUrl);
-      console.log('Proxied URL:', finalImageUrl);
       
       // Check if image has actual data
       const tempCanvas = document.createElement('canvas');
@@ -567,8 +558,8 @@ async function addImageFromUrl() {
       }
     };
     
-    console.log('Setting image src to:', finalImageUrl);
-    img.src = finalImageUrl;
+    console.log('Setting image src to:', imageUrl);
+    img.src = imageUrl;
     
   } catch (error) {
     console.error('=== ERROR IN ADD IMAGE FUNCTION ===');
@@ -1069,27 +1060,60 @@ document.getElementById('publish').addEventListener('click', async () => {
     try {
       console.log('Taking screenshot of canvas using HTML2Canvas...');
       
+      // Check if HTML2Canvas is available
+      if (typeof html2canvas === 'undefined') {
+        throw new Error('HTML2Canvas library not loaded');
+      }
+      
       // Take a screenshot of the canvas element
       const canvasElement = document.getElementById('canvas');
-      const screenshot = await html2canvas(canvasElement, {
-        width: 400,
-        height: 400,
-        scale: 1,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: true,
-        logging: false
-      });
+      if (!canvasElement) {
+        throw new Error('Canvas element not found');
+      }
+      
+      console.log('Canvas element found, taking screenshot...');
+      const screenshot = await Promise.race([
+        html2canvas(canvasElement, {
+          width: 400,
+          height: 400,
+          scale: 1,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          allowTaint: true,
+          logging: false
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Screenshot timeout')), 10000)
+        )
+      ]);
       
       // Convert to data URL with compression
-      dataURL = screenshot.toDataURL('image/jpeg', 0.6);
+      dataURL = screenshot.toDataURL('image/jpeg', 0.4); // More aggressive compression
       console.log('Successfully captured canvas screenshot');
       console.log('Image data size:', dataURL.length, 'characters');
       
+      // Check if image data is too large (over 1MB)
+      if (dataURL.length > 1000000) {
+        console.log('Image data too large, compressing further...');
+        dataURL = screenshot.toDataURL('image/jpeg', 0.2); // Even more compression
+        console.log('Compressed image size:', dataURL.length, 'characters');
+      }
+      
     } catch (screenshotError) {
       console.log('Screenshot failed, using fallback:', screenshotError);
-      // Create a simple placeholder image
-      dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      console.log('Error details:', screenshotError.message);
+      
+      // Try fallback method - create a simple canvas export
+      try {
+        console.log('Trying fallback canvas export...');
+        const canvas = document.getElementById('canvas');
+        dataURL = canvas.toDataURL('image/jpeg', 0.6);
+        console.log('Fallback export successful');
+      } catch (fallbackError) {
+        console.log('Fallback also failed:', fallbackError);
+        // Create a simple placeholder image
+        dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      }
     }
 
     // Save the image to the server
@@ -1173,6 +1197,8 @@ document.getElementById('publish').addEventListener('click', async () => {
 
     console.log('Publishing moodboard with image data length:', dataURL.length);
     console.log('Image data preview:', dataURL.substring(0, 100) + '...');
+    console.log('Image data starts with:', dataURL.substring(0, 50));
+    console.log('Image data ends with:', dataURL.substring(dataURL.length - 50));
     console.log('Products to save:', products);
     console.log('Loaded images count:', loadedImages.length);
     console.log('Loaded images with URLs:', loadedImages.filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image').length);
