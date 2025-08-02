@@ -198,6 +198,45 @@
 
         let isSignUp = false;
 
+        // Handle magic link callback
+        async function handleMagicLinkCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const accessToken = urlParams.get('access_token');
+            const refreshToken = urlParams.get('refresh_token');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+
+            console.log('Magic link callback detected');
+            console.log('Access token:', accessToken ? 'present' : 'missing');
+            console.log('Refresh token:', refreshToken ? 'present' : 'missing');
+            console.log('Error:', error);
+            console.log('Error description:', errorDescription);
+
+            if (error) {
+                showError(`Authentication failed: ${errorDescription || error}`);
+                return;
+            }
+
+            if (accessToken && refreshToken) {
+                // Store the tokens
+                localStorage.setItem('supabase.auth.token', accessToken);
+                localStorage.setItem('supabase.auth.refresh_token', refreshToken);
+                
+                console.log('Authentication tokens stored successfully');
+                showSuccess('Successfully signed in! Redirecting to create page...');
+                
+                // Redirect to create page after a short delay
+                setTimeout(() => {
+                    window.location.href = '/create/';
+                }, 2000);
+            }
+        }
+
+        // Check for magic link callback on page load
+        if (window.location.search.includes('access_token') || window.location.search.includes('error')) {
+            handleMagicLinkCallback();
+        }
+
         // Toggle between sign in and sign up
         document.getElementById('toggle-auth').addEventListener('click', () => {
             isSignUp = !isSignUp;

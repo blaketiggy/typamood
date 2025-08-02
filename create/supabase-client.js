@@ -140,7 +140,7 @@ export const auth = {
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin + '/create/'
+          emailRedirectTo: window.location.origin + '/auth.html'
         }
       })
       return { data, error }
@@ -157,7 +157,7 @@ export const auth = {
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin + '/create/'
+          emailRedirectTo: window.location.origin + '/auth.html'
         }
       })
       return { data, error }
