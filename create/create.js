@@ -1,5 +1,5 @@
 // Import Supabase client
-import { auth, api, ui } from './supabase-client.js';
+import { auth, api, ui, supabase } from './supabase-client.js';
 
 // Variable declarations - must be at the top
 let loadedImages = [];

@@ -655,51 +655,67 @@ exports.handler = async (event, context) => {
       if (isProductUrl) {
         console.log('Detected product URL, extracting image...');
         
-        // Use the existing product image extraction logic
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch product page: ${response.status}`);
+        try {
+          // Use the existing product image extraction logic
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          console.log('Fetching product page via proxy:', proxyUrl);
+          
+          const response = await fetch(proxyUrl);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch product page: ${response.status}`);
+          }
+          
+          const html = await response.text();
+          console.log('Product page HTML length:', html.length);
+          
+          // Extract images from HTML
+          const imageMatches = html.match(/https:\/\/[^"]*\.(jpg|jpeg|png|webp)/gi);
+          console.log('Found image matches:', imageMatches ? imageMatches.length : 0);
+          
+          if (!imageMatches || imageMatches.length === 0) {
+            throw new Error('No images found on product page');
+          }
+          
+          // Filter and get the best product image
+          const productImages = imageMatches
+            .filter(img => 
+              !img.includes('logo') &&
+              !img.includes('icon') &&
+              !img.includes('banner') &&
+              !img.includes('ad') &&
+              img.length > 50
+            )
+            .slice(0, 1); // Take the first good image
+          
+          console.log('Filtered product images:', productImages.length);
+          
+          if (productImages.length === 0) {
+            throw new Error('No suitable product images found');
+          }
+          
+          imageUrl = productImages[0];
+          console.log('Extracted image URL:', imageUrl);
+        } catch (extractionError) {
+          console.error('Image extraction failed:', extractionError);
+          // Fallback: try to use a placeholder image
+          imageUrl = 'https://via.placeholder.com/400x400/cccccc/666666?text=Image+Not+Found';
+          console.log('Using fallback image URL:', imageUrl);
         }
-        
-        const html = await response.text();
-        
-        // Extract images from HTML
-        const imageMatches = html.match(/https:\/\/[^"]*\.(jpg|jpeg|png|webp)/gi);
-        
-        if (!imageMatches || imageMatches.length === 0) {
-          throw new Error('No images found on product page');
-        }
-        
-        // Filter and get the best product image
-        const productImages = imageMatches
-          .filter(img => 
-            !img.includes('logo') &&
-            !img.includes('icon') &&
-            !img.includes('banner') &&
-            !img.includes('ad') &&
-            img.length > 50
-          )
-          .slice(0, 1); // Take the first good image
-        
-        if (productImages.length === 0) {
-          throw new Error('No suitable product images found');
-        }
-        
-        imageUrl = productImages[0];
-        console.log('Extracted image URL:', imageUrl);
       }
 
       // Fetch the actual image
+      console.log('Fetching image from:', imageUrl);
       const imageResponse = await fetch(imageUrl);
       
       if (!imageResponse.ok) {
+        console.error('Image fetch failed:', imageResponse.status, imageResponse.statusText);
         throw new Error(`Failed to fetch image: ${imageResponse.status}`);
       }
       
       const imageBuffer = await imageResponse.buffer();
       const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      console.log('Image fetched successfully, size:', imageBuffer.length, 'bytes, type:', contentType);
       
       return {
         statusCode: 200,
