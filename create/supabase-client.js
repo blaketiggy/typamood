@@ -131,7 +131,7 @@ export const auth = {
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin + '/auth.html'
+          emailRedirectTo: 'https://polite-bombolone-fa9de3.netlify.app/auth.html'
         }
       })
       
@@ -150,7 +150,7 @@ export const auth = {
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin + '/auth.html'
+          emailRedirectTo: 'https://polite-bombolone-fa9de3.netlify.app/auth.html'
         }
       })
       
