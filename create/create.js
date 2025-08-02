@@ -420,6 +420,40 @@ async function addImageFromUrl() {
       console.log('=== IMAGE LOADED SUCCESSFULLY ===');
       console.log('Image dimensions:', img.width, 'x', img.height);
       console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+      console.log('Image src:', img.src);
+      
+      // Check if image has actual data
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      tempCtx.drawImage(img, 0, 0);
+      
+      try {
+        const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+        const data = imageData.data;
+        let hasNonTransparentPixels = false;
+        
+        // Check if image has non-transparent pixels
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] > 0) { // Alpha channel > 0
+            hasNonTransparentPixels = true;
+            break;
+          }
+        }
+        
+        console.log('Image data check:', {
+          totalPixels: data.length / 4,
+          hasNonTransparentPixels: hasNonTransparentPixels,
+          firstFewPixels: Array.from(data.slice(0, 20))
+        });
+        
+        if (!hasNonTransparentPixels) {
+          console.warn('Image appears to be completely transparent or white!');
+        }
+      } catch (e) {
+        console.error('Could not analyze image data:', e);
+      }
       
       // Calculate relative size (percentage of canvas)
       const canvasArea = canvas.width * canvas.height;
@@ -703,43 +737,59 @@ async function extractImageViaScreenshot(url) {
 // Extract Amazon product images
 async function extractAmazonImage(url) {
   try {
-    // Extract product ID from Amazon URL
-    const productIdMatch = url.match(/\/dp\/([A-Z0-9]{10})/);
-    if (productIdMatch) {
-      const productId = productIdMatch[1];
-      // Amazon image URL pattern
-      const amazonImageUrl = `https://images-na.ssl-images-amazon.com/images/P/${productId}.jpg`;
+    console.log('Extracting Amazon image from:', url);
+    
+    // Try to get product image using Amazon's image API
+    const productId = url.match(/\/dp\/([A-Z0-9]{10})/);
+    if (productId) {
+      const asin = productId[1];
+      console.log('Found ASIN:', asin);
       
-      // Test if image exists
-      const response = await fetch(amazonImageUrl, { method: 'HEAD' });
-      if (response.ok) {
-        return amazonImageUrl;
-      }
-    }
-    
-    // Try alternative Amazon image patterns
-    const alternativePatterns = [
-      url.replace(/\/dp\//, '/images/P/').replace(/\/ref=.*/, '') + '.jpg',
-      url.replace(/\/dp\//, '/images/P/').replace(/\/ref=.*/, '') + '.png',
-      url.replace(/\/dp\//, '/images/P/').replace(/\/ref=.*/, '') + '_L.jpg',
-      url.replace(/\/dp\//, '/images/P/').replace(/\/ref=.*/, '') + '_M.jpg'
-    ];
-    
-    for (let pattern of alternativePatterns) {
-      try {
-        const response = await fetch(pattern, { method: 'HEAD' });
-        if (response.ok) {
-          return pattern;
+      // Try different Amazon image URLs
+      const imageUrls = [
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`,
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.M.jpg`,
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.T.jpg`,
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.Z.jpg`,
+        `https://m.media-amazon.com/images/P/${asin}.01.L.jpg`,
+        `https://m.media-amazon.com/images/P/${asin}.01.M.jpg`,
+        `https://m.media-amazon.com/images/P/${asin}.01.T.jpg`,
+        `https://m.media-amazon.com/images/P/${asin}.01.Z.jpg`
+      ];
+      
+      for (let imageUrl of imageUrls) {
+        try {
+          console.log('Trying Amazon image URL:', imageUrl);
+          const response = await fetch(imageUrl, { method: 'HEAD' });
+          if (response.ok) {
+            console.log('Found working Amazon image URL:', imageUrl);
+            return imageUrl;
+          }
+        } catch (e) {
+          console.log('Failed to check:', imageUrl);
         }
-      } catch (e) {
-        // Continue to next pattern
       }
     }
     
-    return null;
+    // Fallback: Try to extract from the page HTML
+    console.log('Trying to extract from page HTML...');
+    const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    if (response.ok) {
+      const html = await response.text();
+      
+      // Look for Amazon product images
+      const imageMatches = html.match(/https:\/\/[^"]*\.amazon\.com\/images\/[^"]*\.(jpg|jpeg|png|webp)/gi);
+      if (imageMatches && imageMatches.length > 0) {
+        console.log('Found Amazon images in HTML:', imageMatches.slice(0, 3));
+        return imageMatches[0];
+      }
+    }
+    
+    console.log('Amazon image extraction failed, returning original URL');
+    return url;
   } catch (error) {
     console.error('Error extracting Amazon image:', error);
-    return null;
+    return url;
   }
 }
 
