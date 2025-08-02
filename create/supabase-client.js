@@ -1,33 +1,106 @@
-// Simplified Supabase client - Focus on core functionality
+// Real Supabase client for browser
 const supabaseUrl = 'https://jjjfmsszuiofinrobgln.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZtc3N6dWlvZmlucm9iZ2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDEwNDcsImV4cCI6MjA2OTY3NzA0N30.qRqM6YsrNgquw-2aA6WYzMqoq_PM82M5vz_rQ89GH94'
 
-// Create a simple mock client for now
-const createMockSupabaseClient = () => {
+// Create a real Supabase client using fetch API
+const createRealSupabaseClient = () => {
   return {
     auth: {
       signInWithOtp: async ({ email, options }) => {
-        console.log('Mock: Sending magic link to:', email)
-        // Simulate successful magic link send
-        return { data: { user: null }, error: null }
+        try {
+          console.log('Sending magic link to:', email)
+          
+          const response = await fetch(`${supabaseUrl}/auth/v1/magiclink`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
+            },
+            body: JSON.stringify({
+              email,
+              ...options
+            })
+          })
+          
+          console.log('Magic link response status:', response.status)
+          
+          if (!response.ok) {
+            const error = await response.json()
+            console.error('Magic link error:', error)
+            return { data: null, error }
+          }
+          
+          const data = await response.json()
+          console.log('Magic link sent successfully')
+          return { data, error: null }
+        } catch (error) {
+          console.error('Sign in error:', error)
+          return { data: null, error }
+        }
       },
       
       signOut: async () => {
-        console.log('Mock: Signing out')
-        return { error: null }
+        try {
+          // Clear any stored session
+          localStorage.removeItem('supabase.auth.token')
+          localStorage.removeItem('supabase.auth.refresh_token')
+          return { error: null }
+        } catch (error) {
+          console.error('Sign out error:', error)
+          return { error }
+        }
       },
       
       getUser: async () => {
-        console.log('Mock: Getting user (always anonymous for now)')
-        return { data: { user: null } }
+        try {
+          // Check for stored session
+          const token = localStorage.getItem('supabase.auth.token')
+          if (!token) {
+            console.log('No auth token found')
+            return { data: { user: null } }
+          }
+          
+          console.log('Getting user with token')
+          
+          const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          
+          console.log('Get user response status:', response.status)
+          
+          if (!response.ok) {
+            console.log('Get user failed, clearing token')
+            localStorage.removeItem('supabase.auth.token')
+            return { data: { user: null } }
+          }
+          
+          const user = await response.json()
+          console.log('User retrieved:', user)
+          return { data: { user } }
+        } catch (error) {
+          console.error('Get user error:', error)
+          return { data: { user: null } }
+        }
       },
       
       onAuthStateChange: (callback) => {
-        console.log('Mock: Setting up auth state change listener')
+        // Simple auth state change listener
+        const checkAuth = async () => {
+          const { data: { user } } = await this.getUser()
+          callback('TOKEN_REFRESHED', { user })
+        }
+        
+        // Check auth state periodically
+        const interval = setInterval(checkAuth, 30000)
+        
         return {
           data: {
             subscription: {
-              unsubscribe: () => console.log('Mock: Unsubscribed from auth changes')
+              unsubscribe: () => clearInterval(interval)
             }
           }
         }
@@ -37,8 +110,8 @@ const createMockSupabaseClient = () => {
 }
 
 // Initialize the client
-const supabase = createMockSupabaseClient()
-console.log('Mock Supabase client initialized')
+const supabase = createRealSupabaseClient()
+console.log('Real Supabase client initialized')
 
 // Auth functions
 export const auth = {

@@ -225,13 +225,15 @@
             const stopLoading = ui.showLoading(button);
 
             try {
+                console.log('Attempting sign in for:', email);
                 const { error } = await auth.signIn(email);
                 if (error) throw error;
 
                 showSuccess('Magic link sent! Check your email and click the link to sign in.');
                 showInfo('You can close this page and return to creating your moodboard.');
             } catch (error) {
-                showError(error.message);
+                console.error('Sign in error:', error);
+                showError(error.message || 'Failed to send magic link');
             } finally {
                 stopLoading();
             }
@@ -246,13 +248,15 @@
             const stopLoading = ui.showLoading(button);
 
             try {
+                console.log('Attempting sign up for:', email);
                 const { error } = await auth.signUp(email);
                 if (error) throw error;
 
                 showSuccess('Account created! Check your email and click the magic link to verify your account.');
                 showInfo('You can close this page and return to creating your moodboard.');
             } catch (error) {
-                showError(error.message);
+                console.error('Sign up error:', error);
+                showError(error.message || 'Failed to create account');
             } finally {
                 stopLoading();
             }

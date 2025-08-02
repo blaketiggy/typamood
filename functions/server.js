@@ -41,33 +41,11 @@ app.post('/api/publish-moodboard', async (req, res) => {
     console.log('Generated moodboard ID:', moodboardId);
     console.log('Safe title:', safeTitle);
     
-    // Upload image to Supabase Storage
-    const imageData = image.replace(/^data:image\/png;base64,/, '');
-    const imageBuffer = Buffer.from(imageData, 'base64');
-    const imageFileName = `${moodboardId}.png`;
+    // For now, skip image upload to avoid storage issues
+    // Just use the data URL directly
+    const imageUrl = image; // Use the data URL as-is
     
-    console.log('Uploading image to storage:', imageFileName);
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('moodboard-images')
-      .upload(imageFileName, imageBuffer, {
-        contentType: 'image/png',
-        upsert: false
-      });
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      return res.status(500).json({ error: 'Failed to upload image: ' + uploadError.message });
-    }
-
-    console.log('Image uploaded successfully');
-
-    // Get public URL for the uploaded image
-    const { data: { publicUrl } } = supabase.storage
-      .from('moodboard-images')
-      .getPublicUrl(imageFileName);
-
-    console.log('Public URL generated:', publicUrl);
+    console.log('Using data URL for image (skipping storage upload)');
 
     // Save moodboard to database
     console.log('Saving moodboard to database');
@@ -77,7 +55,7 @@ app.post('/api/publish-moodboard', async (req, res) => {
         id: moodboardId,
         user_id: finalUserId, // null for anonymous users
         title: title,
-        image_url: publicUrl,
+        image_url: imageUrl, // Store the data URL directly
         products: products,
         canvas_size: canvasSize,
         public_url: `/user/${safeTitle}`,
@@ -97,7 +75,7 @@ app.post('/api/publish-moodboard', async (req, res) => {
       success: true,
       publicUrl: `/user/${safeTitle}`,
       moodboardId: moodboardId,
-      imageUrl: publicUrl
+      imageUrl: imageUrl
     });
 
   } catch (error) {
@@ -164,16 +142,7 @@ app.delete('/api/moodboard/:id', async (req, res) => {
     // Handle anonymous users
     const finalUserId = userId === 'anon' ? null : userId;
 
-    // Delete image from storage
-    const { error: storageError } = await supabase.storage
-      .from('moodboard-images')
-      .remove([`${id}.png`]);
-
-    if (storageError) {
-      console.error('Storage delete error:', storageError);
-    }
-
-    // Delete from database
+    // Delete from database (skip storage deletion for now)
     const { error: dbError } = await supabase
       .from('moodboards')
       .delete()
