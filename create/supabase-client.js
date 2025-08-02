@@ -82,9 +82,23 @@ const createSimpleSupabaseClient = () => {
       getUser: async () => {
         try {
           // Check for stored session
-          const token = localStorage.getItem('supabase.auth.token')
-          if (!token) {
-            console.log('No auth token found')
+          const sessionData = localStorage.getItem('supabase.auth.token')
+          if (!sessionData) {
+            console.log('No auth session found')
+            return { data: { user: null } }
+          }
+          
+          let session
+          try {
+            session = JSON.parse(sessionData)
+          } catch {
+            // Fallback for old format
+            const token = sessionData
+            session = { access_token: token }
+          }
+          
+          if (!session.access_token) {
+            console.log('No access token found in session')
             return { data: { user: null } }
           }
           
@@ -93,15 +107,16 @@ const createSimpleSupabaseClient = () => {
           const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
             headers: {
               'apikey': supabaseKey,
-              'Authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${session.access_token}`
             }
           })
           
           console.log('Get user response status:', response.status)
           
           if (!response.ok) {
-            console.log('Get user failed, clearing token')
+            console.log('Get user failed, clearing session')
             localStorage.removeItem('supabase.auth.token')
+            localStorage.removeItem('supabase.auth.refresh_token')
             return { data: { user: null } }
           }
           

@@ -223,11 +223,18 @@
             }
 
             if (accessToken && refreshToken) {
-                // Store the tokens
-                localStorage.setItem('supabase.auth.token', accessToken);
+                // Store the tokens in the correct format
+                const session = {
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                    expires_at: Date.now() + (3600 * 1000) // 1 hour from now
+                };
+                
+                localStorage.setItem('supabase.auth.token', JSON.stringify(session));
                 localStorage.setItem('supabase.auth.refresh_token', refreshToken);
                 
                 console.log('Authentication tokens stored successfully');
+                console.log('Session stored:', session);
                 showSuccess('Successfully signed in! Redirecting to create page...');
                 
                 // Redirect to create page after a short delay
@@ -246,10 +253,17 @@
                 console.log('Hash refresh token:', hashRefreshToken ? 'present' : 'missing');
                 
                 if (hashAccessToken && hashRefreshToken) {
-                    localStorage.setItem('supabase.auth.token', hashAccessToken);
+                    const session = {
+                        access_token: hashAccessToken,
+                        refresh_token: hashRefreshToken,
+                        expires_at: Date.now() + (3600 * 1000) // 1 hour from now
+                    };
+                    
+                    localStorage.setItem('supabase.auth.token', JSON.stringify(session));
                     localStorage.setItem('supabase.auth.refresh_token', hashRefreshToken);
                     
                     console.log('Authentication tokens from hash stored successfully');
+                    console.log('Session stored:', session);
                     showSuccess('Successfully signed in! Redirecting to create page...');
                     
                     setTimeout(() => {
