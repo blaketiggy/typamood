@@ -149,6 +149,79 @@ exports.handler = async (event, context) => {
     }
   }
   
+  // Extract page title endpoint
+  if (path.includes('/api/extract-page-title') || path.endsWith('/extract-page-title')) {
+    try {
+      const { url } = event.queryStringParameters || {};
+      
+      if (!url) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ error: 'URL parameter required' })
+        };
+      }
+
+      console.log('Extracting page title from:', url);
+
+      // Use allorigins.win to bypass CORS
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch page: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const html = data.contents;
+      
+      // Extract title from HTML
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      let title = titleMatch ? titleMatch[1].trim() : null;
+      
+      // Clean up the title
+      if (title) {
+        title = title.replace(/[^\w\s-]/g, '').trim();
+        if (title.length > 100) {
+          title = title.substring(0, 100) + '...';
+        }
+      }
+
+      console.log('Extracted title:', title);
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          title: title,
+          message: title ? 'Title extracted successfully' : 'No title found'
+        })
+      };
+      
+    } catch (error) {
+      console.error('Error extracting page title:', error);
+      
+      return {
+        statusCode: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: error.message
+        })
+      };
+    }
+  }
+  
   // Canvas export endpoint to handle CORS issues
   if (path.includes('/api/export-canvas') || path.endsWith('/export-canvas')) {
     try {

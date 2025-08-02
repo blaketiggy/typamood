@@ -56,42 +56,43 @@
         }
 
         .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
             margin-top: 20px;
         }
 
-        .product-card {
-            background: #fafafa;
-            border-radius: 8px;
-            padding: 16px;
-            border: 1px solid #e9e9e7;
-            text-align: center;
+        .product-item {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px 16px;
+            border: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .product-image {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 4px;
-            margin-bottom: 12px;
-        }
-
-        .product-title {
+        .product-name {
             font-size: 14px;
             color: #37352f;
-            margin-bottom: 8px;
+            font-weight: 500;
         }
 
-        .product-link {
+        .product-url {
             color: #2383e2;
             text-decoration: none;
             font-size: 12px;
+            word-break: break-all;
+            max-width: 60%;
         }
 
-        .product-link:hover {
+        .product-url:hover {
             text-decoration: underline;
+        }
+
+        .product-placeholder {
+            color: #787774;
+            font-style: italic;
         }
 
         .back-button {
@@ -226,17 +227,16 @@
                         const productsGrid = document.getElementById('products-grid');
                         
                         productsGrid.innerHTML = moodboardData.products.map(product => `
-                            <div class="product-card">
-                                <img class="product-image" src="${product.imageUrl}" alt="${product.title}" onerror="this.style.display='none'">
-                                <div class="product-title">${product.title}</div>
-                                <a href="${product.imageUrl}" class="product-link" target="_blank">View Product</a>
+                            <div class="product-item">
+                                <span class="product-name">${product.title}</span>
+                                <a href="${product.url}" class="product-url" target="_blank">${product.url}</a>
                             </div>
                         `).join('');
                     } else {
                         console.log('No products to display');
                         // Show placeholder if no products
                         document.getElementById('products-section').style.display = 'block';
-                        document.getElementById('products-grid').innerHTML = '<div class="product-card"><div class="placeholder">No products added to this moodboard</div></div>';
+                        document.getElementById('products-grid').innerHTML = '<div class="product-item"><div class="product-placeholder">No products added to this moodboard</div></div>';
                     }
                     
                     // Hide placeholder text
@@ -257,7 +257,7 @@
                     
                     // Show products section with placeholder
                     document.getElementById('products-section').style.display = 'block';
-                    document.getElementById('products-grid').innerHTML = '<div class="product-card"><div class="placeholder">Products will appear here</div></div>';
+                    document.getElementById('products-grid').innerHTML = '<div class="product-item"><div class="product-placeholder">Products will appear here</div></div>';
                 }
                 
             } catch (error) {

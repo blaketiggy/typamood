@@ -800,6 +800,63 @@ async function extractDiorImage(url) {
   }
 }
 
+// Function to extract page title from a URL
+async function extractPageTitle(url) {
+  try {
+    const response = await fetch(`/api/extract-page-title?url=${encodeURIComponent(url)}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.title) {
+        return data.title;
+      }
+    }
+  } catch (e) {
+    console.log('Failed to extract page title:', e);
+  }
+  return null;
+}
+
+// Function to get better product names from URLs
+async function getProductName(url) {
+  // Try to get page title first
+  const pageTitle = await extractPageTitle(url);
+  if (pageTitle) {
+    return pageTitle;
+  }
+  
+  // Fallback to URL-based extraction
+  try {
+    const urlObj = new URL(url);
+    
+    if (urlObj.hostname.includes('amazon.com')) {
+      const pathParts = urlObj.pathname.split('/');
+      const productId = pathParts.find(part => part.length === 10 && /^[A-Z0-9]{10}$/.test(part));
+      if (productId) {
+        return `Amazon Product (${productId})`;
+      }
+      return 'Amazon Product';
+    } else if (urlObj.hostname.includes('etsy.com')) {
+      return 'Etsy Product';
+    } else if (urlObj.hostname.includes('walmart.com')) {
+      return 'Walmart Product';
+    } else if (urlObj.hostname.includes('bestbuy.com')) {
+      return 'Best Buy Product';
+    } else {
+      const pathParts = urlObj.pathname.split('/').filter(part => part.length > 0);
+      if (pathParts.length > 0) {
+        const lastPart = pathParts[pathParts.length - 1];
+        if (lastPart.length > 3) {
+          return lastPart.replace(/[-_]/g, ' ').replace(/\.[^.]*$/, '');
+        }
+      }
+    }
+  } catch (e) {
+    console.log('Failed to parse URL for product name:', url);
+  }
+  
+  return 'Product';
+}
+
 // Paste functionality
 document.addEventListener('paste', (e) => {
   console.log('Paste event detected');
@@ -1008,19 +1065,25 @@ document.getElementById('publish').addEventListener('click', async () => {
       dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     }
     
-    // Collect product URLs
-    const products = loadedImages
+    // Collect product URLs with better names
+    const productPromises = loadedImages
       .filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image')
-      .map(img => ({
-        imageUrl: img.originalImageUrl,
-        title: img.originalImageUrl.split('/').pop() || 'Product'
-      }));
+      .map(async img => {
+        const productName = await getProductName(img.originalImageUrl);
+        return {
+          url: img.originalImageUrl,
+          title: productName
+        };
+      });
+
+    // Wait for all product names to be fetched
+    const products = await Promise.all(productPromises);
 
     // Prepare moodboard data
     const moodboardData = {
       title: moodboardTitle || 'Untitled Moodboard',
       image: dataURL,
-      products: products,
+      products: products, // Wait for all product names to be fetched
       createdAt: new Date().toISOString(),
       canvasSize: { width: canvas.width, height: canvas.height }
     };
