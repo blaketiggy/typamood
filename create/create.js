@@ -1113,7 +1113,21 @@ document.getElementById('publish').addEventListener('click', async () => {
       dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     }
 
-      let imagePath = null;
+    // Save the image to the server
+    let imagePath = null;
+    try {
+      const saveImageResponse = await fetch('/.netlify/functions/server/api/save-canvas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: dataURL,
+          moodboardId: Date.now().toString(), // Generate a unique ID
+          title: moodboardTitle || 'Untitled Moodboard'
+        })
+      });
+
       if (saveImageResponse.ok) {
         const saveResult = await saveImageResponse.json();
         if (saveResult.success) {
@@ -1121,6 +1135,10 @@ document.getElementById('publish').addEventListener('click', async () => {
           console.log('Canvas image saved:', imagePath);
         }
       }
+    } catch (saveError) {
+      console.error('Failed to save image:', saveError);
+      // Continue without image path if save fails
+    }
 
       // Collect product URLs with better names
       const products = loadedImages
