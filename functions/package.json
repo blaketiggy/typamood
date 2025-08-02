@@ -1,0 +1,17 @@
+{
+  "name": "typamood-functions",
+  "version": "1.0.0",
+  "description": "Netlify functions for Typamood",
+  "main": "server.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+} 

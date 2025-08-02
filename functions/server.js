@@ -1,6 +1,12 @@
 const fetch = require('node-fetch');
+const { createClient } = require('@supabase/supabase-js');
 
 console.log('Server starting with proxy approach...');
+
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL || 'https://jjjfmsszuiofinrobgln.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'YOUR_SERVICE_ROLE_KEY_HERE';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Health check endpoint
 exports.handler = async (event, context) => {
@@ -455,19 +461,39 @@ exports.handler = async (event, context) => {
 
       // Create safe filename
       const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const filename = `${moodboardId}_${safeTitle}.png`;
-      const imagePath = `/images/${filename}`;
+      const filename = `${moodboardId}_${safeTitle}.jpg`;
       
-      console.log('Saving canvas image:', {
+      console.log('Saving canvas image to Supabase storage:', {
         moodboardId,
         title,
         filename,
-        imagePath,
         dataLength: imageData.length
       });
 
-      // In a real implementation, you'd save this to a file system or cloud storage
-      // For now, we'll return the path and the client can handle the actual file
+      // Convert base64 to buffer
+      const base64Data = imageData.replace(/^data:image\/jpeg;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Upload to Supabase storage
+      const { data, error } = await supabase.storage
+        .from('moodboard-images')
+        .upload(filename, buffer, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+      
+      if (error) {
+        console.error('Supabase storage upload error:', error);
+        throw new Error(`Failed to upload image: ${error.message}`);
+      }
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('moodboard-images')
+        .getPublicUrl(filename);
+      
+      const imagePath = urlData.publicUrl;
+      console.log('Image uploaded successfully:', imagePath);
       return {
         statusCode: 200,
         headers: {
