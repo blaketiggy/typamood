@@ -9,6 +9,7 @@ const createRealSupabaseClient = () => {
       signInWithOtp: async ({ email, options }) => {
         try {
           console.log('Sending magic link to:', email)
+          console.log('Options:', options)
           
           const response = await fetch(`${supabaseUrl}/auth/v1/otp`, {
             method: 'POST',
@@ -20,19 +21,35 @@ const createRealSupabaseClient = () => {
             body: JSON.stringify({
               email,
               type: 'magiclink',
+              gotrue_meta_security: {},
               ...options
             })
           })
           
           console.log('Magic link response status:', response.status)
+          console.log('Magic link response headers:', Object.fromEntries(response.headers.entries()))
+          
+          const responseText = await response.text()
+          console.log('Magic link response body:', responseText)
           
           if (!response.ok) {
-            const error = await response.json()
+            let error
+            try {
+              error = JSON.parse(responseText)
+            } catch {
+              error = { message: `HTTP ${response.status}: ${responseText}` }
+            }
             console.error('Magic link error:', error)
             return { data: null, error }
           }
           
-          const data = await response.json()
+          let data
+          try {
+            data = JSON.parse(responseText)
+          } catch {
+            data = { message: 'Magic link sent successfully' }
+          }
+          
           console.log('Magic link sent successfully')
           return { data, error: null }
         } catch (error) {
