@@ -1,141 +1,69 @@
-// Real Supabase client for browser
+// Real Supabase client using official library
 const supabaseUrl = 'https://jjjfmsszuiofinrobgln.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZtc3N6dWlvZmlucm9iZ2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDEwNDcsImV4cCI6MjA2OTY3NzA0N30.qRqM6YsrNgquw-2aA6WYzMqoq_PM82M5vz_rQ89GH94'
 
-// Create a real Supabase client using fetch API
-const createRealSupabaseClient = () => {
-  return {
-    auth: {
-      signInWithOtp: async ({ email, options }) => {
-        try {
-          console.log('Sending magic link to:', email)
-          console.log('Options:', options)
-          
-          const response = await fetch(`${supabaseUrl}/auth/v1/otp`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`
-            },
-            body: JSON.stringify({
-              email,
-              type: 'magiclink',
-              gotrue_meta_security: {},
-              ...options
-            })
-          })
-          
-          console.log('Magic link response status:', response.status)
-          console.log('Magic link response headers:', Object.fromEntries(response.headers.entries()))
-          
-          const responseText = await response.text()
-          console.log('Magic link response body:', responseText)
-          
-          if (!response.ok) {
-            let error
-            try {
-              error = JSON.parse(responseText)
-            } catch {
-              error = { message: `HTTP ${response.status}: ${responseText}` }
-            }
-            console.error('Magic link error:', error)
-            return { data: null, error }
-          }
-          
-          let data
-          try {
-            data = JSON.parse(responseText)
-          } catch {
-            data = { message: 'Magic link sent successfully' }
-          }
-          
-          console.log('Magic link sent successfully')
-          return { data, error: null }
-        } catch (error) {
-          console.error('Sign in error:', error)
-          return { data: null, error }
-        }
-      },
-      
-      signOut: async () => {
-        try {
-          // Clear any stored session
-          localStorage.removeItem('supabase.auth.token')
-          localStorage.removeItem('supabase.auth.refresh_token')
-          return { error: null }
-        } catch (error) {
-          console.error('Sign out error:', error)
-          return { error }
-        }
-      },
-      
-      getUser: async () => {
-        try {
-          // Check for stored session
-          const token = localStorage.getItem('supabase.auth.token')
-          if (!token) {
-            console.log('No auth token found')
-            return { data: { user: null } }
-          }
-          
-          console.log('Getting user with token')
-          
-          const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          
-          console.log('Get user response status:', response.status)
-          
-          if (!response.ok) {
-            console.log('Get user failed, clearing token')
-            localStorage.removeItem('supabase.auth.token')
-            return { data: { user: null } }
-          }
-          
-          const user = await response.json()
-          console.log('User retrieved:', user)
-          return { data: { user } }
-        } catch (error) {
-          console.error('Get user error:', error)
-          return { data: { user: null } }
-        }
-      },
-      
-      onAuthStateChange: (callback) => {
-        // Simple auth state change listener
-        const checkAuth = async () => {
-          const { data: { user } } = await this.getUser()
-          callback('TOKEN_REFRESHED', { user })
-        }
-        
-        // Check auth state periodically
-        const interval = setInterval(checkAuth, 30000)
-        
-        return {
-          data: {
-            subscription: {
-              unsubscribe: () => clearInterval(interval)
-            }
-          }
-        }
+// Load Supabase from CDN
+let supabase = null
+
+async function initializeSupabase() {
+  try {
+    console.log('Loading Supabase from CDN...')
+    
+    // Try multiple CDN sources
+    const cdnSources = [
+      'https://unpkg.com/@supabase/supabase-js@2',
+      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+      'https://cdn.skypack.dev/@supabase/supabase-js@2'
+    ]
+    
+    let createClient = null
+    
+    for (const cdnUrl of cdnSources) {
+      try {
+        console.log('Trying CDN:', cdnUrl)
+        const module = await import(cdnUrl)
+        createClient = module.createClient
+        console.log('Successfully loaded from:', cdnUrl)
+        break
+      } catch (error) {
+        console.log('Failed to load from:', cdnUrl, error.message)
       }
     }
+    
+    if (!createClient) {
+      throw new Error('Failed to load Supabase from any CDN')
+    }
+    
+    // Initialize Supabase client
+    supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    })
+    
+    console.log('Supabase client initialized successfully')
+    return supabase
+    
+  } catch (error) {
+    console.error('Failed to initialize Supabase:', error)
+    throw error
   }
 }
 
-// Initialize the client
-const supabase = createRealSupabaseClient()
-console.log('Real Supabase client initialized')
+// Initialize immediately
+initializeSupabase().catch(console.error)
 
 // Auth functions
 export const auth = {
   // Sign up with email (passwordless)
   async signUp(email) {
     try {
+      if (!supabase) {
+        await initializeSupabase()
+      }
+      
       console.log('Signing up user:', email)
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
@@ -143,6 +71,8 @@ export const auth = {
           emailRedirectTo: window.location.origin + '/auth.html'
         }
       })
+      
+      console.log('Sign up result:', { data, error })
       return { data, error }
     } catch (error) {
       console.error('Sign up error:', error)
@@ -153,6 +83,10 @@ export const auth = {
   // Sign in with email (passwordless)
   async signIn(email) {
     try {
+      if (!supabase) {
+        await initializeSupabase()
+      }
+      
       console.log('Signing in user:', email)
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
@@ -160,6 +94,8 @@ export const auth = {
           emailRedirectTo: window.location.origin + '/auth.html'
         }
       })
+      
+      console.log('Sign in result:', { data, error })
       return { data, error }
     } catch (error) {
       console.error('Sign in error:', error)
@@ -170,6 +106,10 @@ export const auth = {
   // Sign out
   async signOut() {
     try {
+      if (!supabase) {
+        await initializeSupabase()
+      }
+      
       const { error } = await supabase.auth.signOut()
       return { error }
     } catch (error) {
@@ -181,6 +121,10 @@ export const auth = {
   // Get current user
   async getCurrentUser() {
     try {
+      if (!supabase) {
+        await initializeSupabase()
+      }
+      
       const { data: { user } } = await supabase.auth.getUser()
       return user
     } catch (error) {
@@ -192,6 +136,11 @@ export const auth = {
   // Listen to auth changes
   onAuthStateChange(callback) {
     try {
+      if (!supabase) {
+        console.warn('Supabase not initialized, cannot set up auth listener')
+        return { data: { subscription: null } }
+      }
+      
       return supabase.auth.onAuthStateChange(callback)
     } catch (error) {
       console.error('Auth state change error:', error)
