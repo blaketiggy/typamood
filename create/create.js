@@ -107,12 +107,11 @@ moodboardTitleElement.addEventListener('keypress', function(e) {
   }
 });
 
-// Canvas resize with proper image handling
+// Canvas resize with fixed size for mobile
 function resizeCanvas() {
-  const container = document.querySelector('.canvas-container');
-  const rect = container.getBoundingClientRect();
-  const newWidth = rect.width - 20;
-  const newHeight = rect.height - 20;
+  // Use fixed size for mobile - matches output size
+  const newWidth = 400;
+  const newHeight = 400;
   
   console.log('Resizing canvas to:', newWidth, 'x', newHeight);
   
@@ -1062,7 +1061,7 @@ document.getElementById('publish').addEventListener('click', async () => {
       const exportCanvas = document.createElement('canvas');
       const exportCtx = exportCanvas.getContext('2d');
       
-      // Set size to 400x400 for smaller file size
+      // Use same size as canvas (400x400)
       exportCanvas.width = 400;
       exportCanvas.height = 400;
       
@@ -1070,20 +1069,10 @@ document.getElementById('publish').addEventListener('click', async () => {
       exportCtx.fillStyle = '#ffffff';
       exportCtx.fillRect(0, 0, 400, 400);
       
-      // Calculate scale to fit the original canvas content
-      const scaleX = 400 / canvas.width;
-      const scaleY = 400 / canvas.height;
-      const scale = Math.min(scaleX, scaleY);
+      // No scaling needed since canvas and export are same size
+      // Just draw the canvas content directly
       
-      // Calculate centering offset
-      const offsetX = (400 - canvas.width * scale) / 2;
-      const offsetY = (400 - canvas.height * scale) / 2;
-      
-      // Draw the original canvas content scaled and centered
-      exportCtx.save();
-      exportCtx.translate(offsetX, offsetY);
-      exportCtx.scale(scale, scale);
-      
+      // Draw the original canvas content directly (no scaling needed)
       // Draw each image individually to avoid CORS issues
       for (const img of loadedImages) {
         if (img.element && img.element.complete) {
@@ -1101,7 +1090,6 @@ document.getElementById('publish').addEventListener('click', async () => {
           exportCtx.restore();
         }
       }
-      exportCtx.restore();
       
       // Convert to data URL with compression
       dataURL = exportCanvas.toDataURL('image/jpeg', 0.6); // Use JPEG with 60% quality for even smaller size
@@ -1249,16 +1237,7 @@ document.getElementById('publish').addEventListener('click', async () => {
       }
     }, 1000);
 
-    // Only download if canvas export succeeded AND user wants it
-    if (dataURL !== 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==') {
-      // Ask user if they want to download
-      if (confirm('Would you like to download the moodboard image?')) {
-        const link = document.createElement('a');
-        link.download = `${moodboardTitle || 'moodboard'}.png`;
-        link.href = dataURL;
-        link.click();
-      }
-    }
+    // Download functionality removed for mobile app - focus on publishing only
 
   } catch (error) {
     console.error('Publish error:', error);
