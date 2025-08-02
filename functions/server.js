@@ -523,7 +523,24 @@ exports.handler = async (event, context) => {
     } catch (error) {
       console.error('Error saving canvas:', error);
       
-      // Fallback: return the image data directly instead of uploading
+      // Check if it's a Supabase configuration issue
+      if (!supabaseKey || supabaseKey === 'YOUR_SERVICE_ROLE_KEY_HERE') {
+        console.error('Supabase service role key not configured');
+        return {
+          statusCode: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            success: false,
+            error: 'Supabase storage not configured. Please set SUPABASE_SERVICE_ROLE_KEY environment variable and create moodboard-images bucket.',
+            fallbackImagePath: imageData // Include base64 as fallback
+          })
+        };
+      }
+      
+      // Other error - return base64 data as fallback
       console.log('Using fallback - returning image data directly');
       return {
         statusCode: 200,
@@ -535,7 +552,7 @@ exports.handler = async (event, context) => {
           success: true,
           imagePath: imageData, // Return the base64 data directly
           filename: filename,
-          message: 'Canvas image saved (fallback mode)'
+          message: 'Canvas image saved (fallback mode - Supabase upload failed)'
         })
       };
     }
