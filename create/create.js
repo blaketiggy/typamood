@@ -745,16 +745,23 @@ async function extractAmazonImage(url) {
       const asin = productId[1];
       console.log('Found ASIN:', asin);
       
-      // Try different Amazon image URLs
+      // Try different Amazon image URLs with correct format
       const imageUrls = [
+        `https://m.media-amazon.com/images/I/71${asin}.jpg`,
+        `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
+        `https://m.media-amazon.com/images/I/71${asin}._AC_SL1000_.jpg`,
+        `https://m.media-amazon.com/images/I/71${asin}._AC_SL500_.jpg`,
+        `https://m.media-amazon.com/images/I/71${asin}._AC_UL1500_.jpg`,
+        `https://m.media-amazon.com/images/I/71${asin}._AC_UL1000_.jpg`,
+        `https://m.media-amazon.com/images/I/71${asin}._AC_UL500_.jpg`,
+        // Try without the "71" prefix
+        `https://m.media-amazon.com/images/I/${asin}.jpg`,
+        `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
+        `https://m.media-amazon.com/images/I/${asin}._AC_SL1000_.jpg`,
+        `https://m.media-amazon.com/images/I/${asin}._AC_SL500_.jpg`,
+        // Legacy format as fallback
         `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`,
-        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.M.jpg`,
-        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.T.jpg`,
-        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.Z.jpg`,
-        `https://m.media-amazon.com/images/P/${asin}.01.L.jpg`,
-        `https://m.media-amazon.com/images/P/${asin}.01.M.jpg`,
-        `https://m.media-amazon.com/images/P/${asin}.01.T.jpg`,
-        `https://m.media-amazon.com/images/P/${asin}.01.Z.jpg`
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.M.jpg`
       ];
       
       for (let imageUrl of imageUrls) {
