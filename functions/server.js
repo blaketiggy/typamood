@@ -145,6 +145,58 @@ exports.handler = async (event, context) => {
     }
   }
   
+  // Canvas export endpoint to handle CORS issues
+  if (event.path === '/api/export-canvas') {
+    try {
+      console.log('Canvas export requested');
+      
+      const { canvasData, width, height } = JSON.parse(event.body || '{}');
+      
+      if (!canvasData || !width || !height) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ error: 'Missing canvas data, width, or height' })
+        };
+      }
+
+      console.log('Exporting canvas:', { width, height, imageCount: canvasData.length });
+
+      // For now, return success with the canvas data
+      // The client will handle the actual image creation
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          message: 'Canvas data received',
+          canvasData: canvasData
+        })
+      };
+      
+    } catch (error) {
+      console.error('Error in canvas export:', error);
+      
+      return {
+        statusCode: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: error.message
+        })
+      };
+    }
+  }
+  
   // Default response for unknown endpoints
   return {
     statusCode: 404,
