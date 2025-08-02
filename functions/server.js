@@ -161,6 +161,79 @@ app.delete('/api/moodboard/:id', async (req, res) => {
   }
 });
 
+// New endpoint to extract Amazon product images
+app.get('/api/extract-amazon-image', async (req, res) => {
+  try {
+    const { url } = req.query;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter is required' });
+    }
+    
+    console.log('Extracting Amazon image from:', url);
+    
+    // Extract ASIN from Amazon URL
+    const productId = url.match(/\/dp\/([A-Z0-9]{10})/);
+    if (!productId) {
+      return res.status(400).json({ error: 'Invalid Amazon URL' });
+    }
+    
+    const asin = productId[1];
+    console.log('Found ASIN:', asin);
+    
+    // Try different Amazon image URL formats
+    const imageUrls = [
+      `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
+      `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
+      `https://m.media-amazon.com/images/I/71${asin}.jpg`,
+      `https://m.media-amazon.com/images/I/${asin}.jpg`,
+      `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`
+    ];
+    
+    for (let imageUrl of imageUrls) {
+      try {
+        console.log('Trying Amazon image URL:', imageUrl);
+        const response = await fetch(imageUrl);
+        
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.startsWith('image/')) {
+            console.log('Found working Amazon image URL:', imageUrl);
+            return res.json({ imageUrl });
+          }
+        }
+      } catch (e) {
+        console.log('Failed to check:', imageUrl);
+      }
+    }
+    
+    // If direct image URLs fail, try to extract from the page HTML
+    console.log('Trying to extract from page HTML...');
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const html = await response.text();
+        
+        // Look for Amazon product images
+        const imageMatches = html.match(/https:\/\/[^"]*\.amazon\.com\/images\/[^"]*\.(jpg|jpeg|png|webp)/gi);
+        if (imageMatches && imageMatches.length > 0) {
+          console.log('Found Amazon images in HTML:', imageMatches.slice(0, 3));
+          return res.json({ imageUrl: imageMatches[0] });
+        }
+      }
+    } catch (e) {
+      console.log('HTML extraction failed:', e);
+    }
+    
+    console.log('Amazon image extraction failed');
+    return res.status(404).json({ error: 'No valid image found' });
+    
+  } catch (error) {
+    console.error('Error extracting Amazon image:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   console.log('Health check requested');

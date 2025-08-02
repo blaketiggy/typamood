@@ -739,64 +739,17 @@ async function extractAmazonImage(url) {
   try {
     console.log('Extracting Amazon image from:', url);
     
-    // Try to get product image using Amazon's image API
-    const productId = url.match(/\/dp\/([A-Z0-9]{10})/);
-    if (productId) {
-      const asin = productId[1];
-      console.log('Found ASIN:', asin);
-      
-      // Try the most common Amazon image URL format first
-      const primaryImageUrl = `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`;
-      console.log('Trying primary Amazon image URL:', primaryImageUrl);
-      
-      try {
-        const response = await fetch(primaryImageUrl, { method: 'HEAD' });
-        if (response.ok) {
-          console.log('Found working Amazon image URL:', primaryImageUrl);
-          return primaryImageUrl;
-        }
-      } catch (e) {
-        console.log('Primary URL failed, trying alternatives...');
-      }
-      
-      // Try alternative formats
-      const alternativeUrls = [
-        `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}.jpg`,
-        `https://m.media-amazon.com/images/I/${asin}.jpg`,
-        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`
-      ];
-      
-      for (let imageUrl of alternativeUrls) {
-        try {
-          console.log('Trying alternative URL:', imageUrl);
-          const response = await fetch(imageUrl, { method: 'HEAD' });
-          if (response.ok) {
-            console.log('Found working alternative URL:', imageUrl);
-            return imageUrl;
-          }
-        } catch (e) {
-          console.log('Alternative URL failed:', imageUrl);
-        }
-      }
-    }
+    // Use server endpoint to extract Amazon images
+    const response = await fetch(`/api/extract-amazon-image?url=${encodeURIComponent(url)}`);
     
-    // If all Amazon URLs fail, try to extract from the page HTML
-    console.log('Trying to extract from page HTML...');
-    try {
-      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-      if (response.ok) {
-        const html = await response.text();
-        
-        // Look for Amazon product images
-        const imageMatches = html.match(/https:\/\/[^"]*\.amazon\.com\/images\/[^"]*\.(jpg|jpeg|png|webp)/gi);
-        if (imageMatches && imageMatches.length > 0) {
-          console.log('Found Amazon images in HTML:', imageMatches.slice(0, 3));
-          return imageMatches[0];
-        }
+    if (response.ok) {
+      const data = await response.json();
+      if (data.imageUrl) {
+        console.log('Server extracted Amazon image URL:', data.imageUrl);
+        return data.imageUrl;
       }
-    } catch (e) {
-      console.log('HTML extraction failed:', e);
+    } else {
+      console.log('Server extraction failed, status:', response.status);
     }
     
     console.log('Amazon image extraction failed, returning original URL');
