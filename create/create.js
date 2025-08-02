@@ -192,6 +192,16 @@ function drawCanvas() {
       selected: imageObj.selected
     });
     
+    // Log exact values
+    console.log(`Image ${index} exact values:`, {
+      x: imageObj.x,
+      y: imageObj.y,
+      width: imageObj.width,
+      height: imageObj.height,
+      rotation: imageObj.rotation,
+      scale: imageObj.scale
+    });
+    
     try {
       ctx.save();
       ctx.translate(imageObj.x + imageObj.width / 2, imageObj.y + imageObj.height / 2);
@@ -207,8 +217,28 @@ function drawCanvas() {
         drawHeight: imageObj.height
       });
       
+      // Log the exact numerical values
+      console.log(`Image ${index} exact drawing values:`, {
+        translateX: imageObj.x + imageObj.width / 2,
+        translateY: imageObj.y + imageObj.height / 2,
+        drawX: -imageObj.width / 2,
+        drawY: -imageObj.height / 2,
+        drawWidth: imageObj.width,
+        drawHeight: imageObj.height
+      });
+      
       ctx.drawImage(
         imageObj.img,
+        -imageObj.width / 2,
+        -imageObj.height / 2,
+        imageObj.width,
+        imageObj.height
+      );
+      
+      // Draw a test rectangle to show where the image should be
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
         -imageObj.width / 2,
         -imageObj.height / 2,
         imageObj.width,
@@ -440,8 +470,24 @@ async function addImageFromUrl() {
       imageObj.x = (canvas.width * imageObj.xPercent) - (newWidth / 2);
       imageObj.y = (canvas.height * imageObj.yPercent) - (newHeight / 2);
       
+      // Ensure the image stays within canvas bounds
+      const maxX = canvas.width - newWidth;
+      const maxY = canvas.height - newHeight;
+      imageObj.x = Math.max(0, Math.min(imageObj.x, maxX));
+      imageObj.y = Math.max(0, Math.min(imageObj.y, maxY));
+      
       console.log('Image object created:', imageObj);
       console.log('Absolute position:', imageObj.x, imageObj.y);
+      console.log('Canvas bounds check:', {
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        imageWidth: newWidth,
+        imageHeight: newHeight,
+        maxX: maxX,
+        maxY: maxY,
+        finalX: imageObj.x,
+        finalY: imageObj.y
+      });
       
       loadedImages.push(imageObj);
       console.log('Total images in array:', loadedImages.length);
@@ -828,6 +874,12 @@ function processPastedImage(file) {
       // Calculate absolute position from percentages
       imageObj.x = (canvas.width * imageObj.xPercent) - (newWidth / 2);
       imageObj.y = (canvas.height * imageObj.yPercent) - (newHeight / 2);
+      
+      // Ensure the image stays within canvas bounds
+      const maxX = canvas.width - newWidth;
+      const maxY = canvas.height - newHeight;
+      imageObj.x = Math.max(0, Math.min(imageObj.x, maxX));
+      imageObj.y = Math.max(0, Math.min(imageObj.y, maxY));
       
       console.log('Adding pasted image object:', imageObj);
       loadedImages.push(imageObj);
