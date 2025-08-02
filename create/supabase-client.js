@@ -167,6 +167,48 @@ const createSimpleSupabaseClient = () => {
 const supabase = createSimpleSupabaseClient()
 console.log('Simple Supabase client initialized')
 
+// Add storage functionality to the supabase client
+const storage = {
+  async upload(bucket, path, file, options = {}) {
+    try {
+      console.log('Uploading to Supabase storage:', { bucket, path, fileSize: file.size });
+      
+      const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': options.contentType || 'application/octet-stream',
+          ...options.headers
+        },
+        body: file
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Supabase storage upload error:', error);
+        throw new Error(error.message || 'Upload failed');
+      }
+      
+      const result = await response.json();
+      console.log('Supabase storage upload success:', result);
+      return { data: result, error: null };
+    } catch (error) {
+      console.error('Supabase storage upload error:', error);
+      return { data: null, error };
+    }
+  },
+  
+  getPublicUrl(bucket, path) {
+    const url = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+    console.log('Generated public URL:', url);
+    return { data: { publicUrl: url } };
+  }
+};
+
+// Add storage to supabase object
+supabase.storage = storage;
+
 // Test function to manually check auth state
 export const testAuth = () => {
   console.log('=== TESTING AUTH STATE ===')
@@ -444,47 +486,5 @@ export const ui = {
     document.body.appendChild(reminder)
   }
 }
-
-// Add storage functionality to the supabase client
-const storage = {
-  async upload(bucket, path, file, options = {}) {
-    try {
-      console.log('Uploading to Supabase storage:', { bucket, path, fileSize: file.size });
-      
-      const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
-        method: 'POST',
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': options.contentType || 'application/octet-stream',
-          ...options.headers
-        },
-        body: file
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        console.error('Supabase storage upload error:', error);
-        throw new Error(error.message || 'Upload failed');
-      }
-      
-      const result = await response.json();
-      console.log('Supabase storage upload success:', result);
-      return { data: result, error: null };
-    } catch (error) {
-      console.error('Supabase storage upload error:', error);
-      return { data: null, error };
-    }
-  },
-  
-  getPublicUrl(bucket, path) {
-    const url = `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
-    console.log('Generated public URL:', url);
-    return { data: { publicUrl: url } };
-  }
-};
-
-// Add storage to supabase object
-supabase.storage = storage;
 
 export { supabase } 
