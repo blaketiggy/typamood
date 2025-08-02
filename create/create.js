@@ -745,76 +745,58 @@ async function extractAmazonImage(url) {
       const asin = productId[1];
       console.log('Found ASIN:', asin);
       
-      // Try different Amazon image URLs with correct format
-      const imageUrls = [
-        `https://m.media-amazon.com/images/I/71${asin}.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}._AC_SL1000_.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}._AC_SL500_.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}._AC_UL1500_.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}._AC_UL1000_.jpg`,
-        `https://m.media-amazon.com/images/I/71${asin}._AC_UL500_.jpg`,
-        // Try without the "71" prefix
-        `https://m.media-amazon.com/images/I/${asin}.jpg`,
+      // Try the most common Amazon image URL format first
+      const primaryImageUrl = `https://m.media-amazon.com/images/I/71${asin}._AC_SL1500_.jpg`;
+      console.log('Trying primary Amazon image URL:', primaryImageUrl);
+      
+      try {
+        const response = await fetch(primaryImageUrl, { method: 'HEAD' });
+        if (response.ok) {
+          console.log('Found working Amazon image URL:', primaryImageUrl);
+          return primaryImageUrl;
+        }
+      } catch (e) {
+        console.log('Primary URL failed, trying alternatives...');
+      }
+      
+      // Try alternative formats
+      const alternativeUrls = [
         `https://m.media-amazon.com/images/I/${asin}._AC_SL1500_.jpg`,
-        `https://m.media-amazon.com/images/I/${asin}._AC_SL1000_.jpg`,
-        `https://m.media-amazon.com/images/I/${asin}._AC_SL500_.jpg`,
-        // Legacy format as fallback
-        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`,
-        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.M.jpg`
+        `https://m.media-amazon.com/images/I/71${asin}.jpg`,
+        `https://m.media-amazon.com/images/I/${asin}.jpg`,
+        `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.L.jpg`
       ];
       
-      for (let imageUrl of imageUrls) {
+      for (let imageUrl of alternativeUrls) {
         try {
-          console.log('Trying Amazon image URL:', imageUrl);
+          console.log('Trying alternative URL:', imageUrl);
           const response = await fetch(imageUrl, { method: 'HEAD' });
           if (response.ok) {
-            // Check if this is actually a valid image by loading it
-            const imgResponse = await fetch(imageUrl);
-            const blob = await imgResponse.blob();
-            
-            // Create a temporary image to check dimensions
-            const validImageUrl = await new Promise((resolve) => {
-              const tempImg = new Image();
-              tempImg.onload = function() {
-                console.log('Test image dimensions:', tempImg.width, 'x', tempImg.height);
-                if (tempImg.width > 1 && tempImg.height > 1) {
-                  console.log('Found working Amazon image URL:', imageUrl);
-                  resolve(imageUrl);
-                } else {
-                  console.log('Image too small, trying next URL...');
-                  resolve(null);
-                }
-              };
-              tempImg.onerror = function() {
-                console.log('Failed to load test image:', imageUrl);
-                resolve(null);
-              };
-              tempImg.src = URL.createObjectURL(blob);
-            });
-            
-            if (validImageUrl) {
-              return validImageUrl;
-            }
+            console.log('Found working alternative URL:', imageUrl);
+            return imageUrl;
           }
         } catch (e) {
-          console.log('Failed to check:', imageUrl);
+          console.log('Alternative URL failed:', imageUrl);
         }
       }
     }
     
-    // Fallback: Try to extract from the page HTML
+    // If all Amazon URLs fail, try to extract from the page HTML
     console.log('Trying to extract from page HTML...');
-    const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-    if (response.ok) {
-      const html = await response.text();
-      
-      // Look for Amazon product images
-      const imageMatches = html.match(/https:\/\/[^"]*\.amazon\.com\/images\/[^"]*\.(jpg|jpeg|png|webp)/gi);
-      if (imageMatches && imageMatches.length > 0) {
-        console.log('Found Amazon images in HTML:', imageMatches.slice(0, 3));
-        return imageMatches[0];
+    try {
+      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+      if (response.ok) {
+        const html = await response.text();
+        
+        // Look for Amazon product images
+        const imageMatches = html.match(/https:\/\/[^"]*\.amazon\.com\/images\/[^"]*\.(jpg|jpeg|png|webp)/gi);
+        if (imageMatches && imageMatches.length > 0) {
+          console.log('Found Amazon images in HTML:', imageMatches.slice(0, 3));
+          return imageMatches[0];
+        }
       }
+    } catch (e) {
+      console.log('HTML extraction failed:', e);
     }
     
     console.log('Amazon image extraction failed, returning original URL');
