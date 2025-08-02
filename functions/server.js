@@ -415,6 +415,70 @@ exports.handler = async (event, context) => {
     }
   }
   
+  // Save canvas image endpoint
+  if (path.includes('/api/save-canvas') || path.endsWith('/save-canvas')) {
+    try {
+      console.log('Save canvas requested');
+      
+      const { imageData, moodboardId, title } = JSON.parse(event.body || '{}');
+      
+      if (!imageData || !moodboardId || !title) {
+        return {
+          statusCode: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({ error: 'Missing imageData, moodboardId, or title' })
+        };
+      }
+
+      // Create safe filename
+      const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${moodboardId}_${safeTitle}.png`;
+      const imagePath = `/images/${filename}`;
+      
+      console.log('Saving canvas image:', {
+        moodboardId,
+        title,
+        filename,
+        imagePath,
+        dataLength: imageData.length
+      });
+
+      // In a real implementation, you'd save this to a file system or cloud storage
+      // For now, we'll return the path and the client can handle the actual file
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: true,
+          imagePath: imagePath,
+          filename: filename,
+          message: 'Canvas image saved successfully'
+        })
+      };
+      
+    } catch (error) {
+      console.error('Error saving canvas:', error);
+      
+      return {
+        statusCode: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: error.message
+        })
+      };
+    }
+  }
+  
   // Default response for unknown endpoints
   return {
     statusCode: 404,

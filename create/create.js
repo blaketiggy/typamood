@@ -1112,57 +1112,66 @@ document.getElementById('publish').addEventListener('click', async () => {
       // Create a simple placeholder image for tainted canvases
       dataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     }
-    
-    // Collect product URLs with better names
-    const products = loadedImages
-      .filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image')
-      .map(img => {
-        // Extract product name from URL (simplified for now)
-        let productName = 'Product';
-        try {
-          const url = new URL(img.originalImageUrl);
-          
-          if (url.hostname.includes('amazon.com')) {
-            const pathParts = url.pathname.split('/');
-            const productId = pathParts.find(part => part.length === 10 && /^[A-Z0-9]{10}$/.test(part));
-            if (productId) {
-              productName = `Amazon Product (${productId})`;
+
+      let imagePath = null;
+      if (saveImageResponse.ok) {
+        const saveResult = await saveImageResponse.json();
+        if (saveResult.success) {
+          imagePath = saveResult.imagePath;
+          console.log('Canvas image saved:', imagePath);
+        }
+      }
+
+      // Collect product URLs with better names
+      const products = loadedImages
+        .filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image')
+        .map(img => {
+          // Extract product name from URL (simplified for now)
+          let productName = 'Product';
+          try {
+            const url = new URL(img.originalImageUrl);
+            
+            if (url.hostname.includes('amazon.com')) {
+              const pathParts = url.pathname.split('/');
+              const productId = pathParts.find(part => part.length === 10 && /^[A-Z0-9]{10}$/.test(part));
+              if (productId) {
+                productName = `Amazon Product (${productId})`;
+              } else {
+                productName = 'Amazon Product';
+              }
+            } else if (url.hostname.includes('etsy.com')) {
+              productName = 'Etsy Product';
+            } else if (url.hostname.includes('walmart.com')) {
+              productName = 'Walmart Product';
+            } else if (url.hostname.includes('bestbuy.com')) {
+              productName = 'Best Buy Product';
             } else {
-              productName = 'Amazon Product';
-            }
-          } else if (url.hostname.includes('etsy.com')) {
-            productName = 'Etsy Product';
-          } else if (url.hostname.includes('walmart.com')) {
-            productName = 'Walmart Product';
-          } else if (url.hostname.includes('bestbuy.com')) {
-            productName = 'Best Buy Product';
-          } else {
-            const pathParts = url.pathname.split('/').filter(part => part.length > 0);
-            if (pathParts.length > 0) {
-              const lastPart = pathParts[pathParts.length - 1];
-              if (lastPart.length > 3) {
-                productName = lastPart.replace(/[-_]/g, ' ').replace(/\.[^.]*$/, '');
+              const pathParts = url.pathname.split('/').filter(part => part.length > 0);
+              if (pathParts.length > 0) {
+                const lastPart = pathParts[pathParts.length - 1];
+                if (lastPart.length > 3) {
+                  productName = lastPart.replace(/[-_]/g, ' ').replace(/\.[^.]*$/, '');
+                }
               }
             }
+          } catch (e) {
+            console.log('Failed to parse URL for product name:', img.originalImageUrl);
           }
-        } catch (e) {
-          console.log('Failed to parse URL for product name:', img.originalImageUrl);
-        }
-        
-        return {
-          url: img.originalImageUrl,
-          title: productName
-        };
-      });
+          
+          return {
+            url: img.originalImageUrl,
+            title: productName
+          };
+        });
 
-    // Prepare moodboard data
-    const moodboardData = {
-      title: moodboardTitle || 'Untitled Moodboard',
-      image: dataURL,
-      products: products, // Wait for all product names to be fetched
-      createdAt: new Date().toISOString(),
-      canvasSize: { width: canvas.width, height: canvas.height }
-    };
+      // Prepare moodboard data with image path instead of image data
+      const moodboardData = {
+        title: moodboardTitle || 'Untitled Moodboard',
+        imagePath: imagePath, // Use the saved image path
+        products: products,
+        createdAt: new Date().toISOString(),
+        canvasSize: { width: canvas.width, height: canvas.height }
+      };
 
     console.log('Publishing moodboard with image data length:', dataURL.length);
     console.log('Image data preview:', dataURL.substring(0, 100) + '...');
