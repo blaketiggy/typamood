@@ -338,6 +338,7 @@ exports.handler = async (event, context) => {
 
       // In a real implementation, you'd save this to a database
       // For now, we'll return the data and the template will handle it
+      console.log('Returning moodboard data with image length:', moodboardInfo.image.length);
       return {
         statusCode: 200,
         headers: {

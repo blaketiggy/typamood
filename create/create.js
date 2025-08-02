@@ -1062,22 +1062,22 @@ document.getElementById('publish').addEventListener('click', async () => {
       const exportCanvas = document.createElement('canvas');
       const exportCtx = exportCanvas.getContext('2d');
       
-      // Set size to 600x600
-      exportCanvas.width = 600;
-      exportCanvas.height = 600;
+      // Set size to 400x400 for smaller file size
+      exportCanvas.width = 400;
+      exportCanvas.height = 400;
       
       // Fill with white background
       exportCtx.fillStyle = '#ffffff';
-      exportCtx.fillRect(0, 0, 600, 600);
+      exportCtx.fillRect(0, 0, 400, 400);
       
       // Calculate scale to fit the original canvas content
-      const scaleX = 600 / canvas.width;
-      const scaleY = 600 / canvas.height;
+      const scaleX = 400 / canvas.width;
+      const scaleY = 400 / canvas.height;
       const scale = Math.min(scaleX, scaleY);
       
       // Calculate centering offset
-      const offsetX = (600 - canvas.width * scale) / 2;
-      const offsetY = (600 - canvas.height * scale) / 2;
+      const offsetX = (400 - canvas.width * scale) / 2;
+      const offsetY = (400 - canvas.height * scale) / 2;
       
       // Draw the original canvas content scaled and centered
       exportCtx.save();
@@ -1104,8 +1104,9 @@ document.getElementById('publish').addEventListener('click', async () => {
       exportCtx.restore();
       
       // Convert to data URL with compression
-      dataURL = exportCanvas.toDataURL('image/jpeg', 0.8); // Use JPEG with 80% quality for smaller size
-      console.log('Successfully exported canvas to 600x600 JPEG');
+      dataURL = exportCanvas.toDataURL('image/jpeg', 0.6); // Use JPEG with 60% quality for even smaller size
+      console.log('Successfully exported canvas to 400x400 JPEG');
+      console.log('Image data size:', dataURL.length, 'characters');
       
     } catch (corsError) {
       console.log('Canvas export failed due to CORS, using fallback');
@@ -1215,6 +1216,12 @@ document.getElementById('publish').addEventListener('click', async () => {
     const result = await api.publishMoodboard(moodboardData);
     
     console.log('Publish result:', result);
+    console.log('Result keys:', Object.keys(result));
+    console.log('Has moodboardData:', !!result.moodboardData);
+    if (result.moodboardData) {
+      console.log('MoodboardData keys:', Object.keys(result.moodboardData));
+      console.log('MoodboardData image length:', result.moodboardData.image ? result.moodboardData.image.length : 0);
+    }
     
     ui.showNotification('Moodboard published successfully!');
     
