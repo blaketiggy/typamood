@@ -1,92 +1,33 @@
-// Supabase client for browser - Simplified version
+// Simplified Supabase client - Focus on core functionality
 const supabaseUrl = 'https://jjjfmsszuiofinrobgln.supabase.co'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpqamZtc3N6dWlvZmlucm9iZ2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMDEwNDcsImV4cCI6MjA2OTY3NzA0N30.qRqM6YsrNgquw-2aA6WYzMqoq_PM82M5vz_rQ89GH94'
 
-// Create a simple Supabase client using fetch API
-const createSimpleSupabaseClient = () => {
-  const baseUrl = supabaseUrl + '/rest/v1'
-  
+// Create a simple mock client for now
+const createMockSupabaseClient = () => {
   return {
     auth: {
       signInWithOtp: async ({ email, options }) => {
-        try {
-          const response = await fetch(`${supabaseUrl}/auth/v1/magiclink`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${supabaseKey}`
-            },
-            body: JSON.stringify({
-              email,
-              ...options
-            })
-          })
-          
-          if (!response.ok) {
-            const error = await response.json()
-            return { data: null, error }
-          }
-          
-          return { data: { user: null }, error: null }
-        } catch (error) {
-          console.error('Sign in error:', error)
-          return { data: null, error }
-        }
+        console.log('Mock: Sending magic link to:', email)
+        // Simulate successful magic link send
+        return { data: { user: null }, error: null }
       },
       
       signOut: async () => {
-        try {
-          // Clear any stored session
-          localStorage.removeItem('supabase.auth.token')
-          return { error: null }
-        } catch (error) {
-          console.error('Sign out error:', error)
-          return { error }
-        }
+        console.log('Mock: Signing out')
+        return { error: null }
       },
       
       getUser: async () => {
-        try {
-          // Check for stored session
-          const token = localStorage.getItem('supabase.auth.token')
-          if (!token) {
-            return { data: { user: null } }
-          }
-          
-          const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-            headers: {
-              'apikey': supabaseKey,
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          
-          if (!response.ok) {
-            return { data: { user: null } }
-          }
-          
-          const user = await response.json()
-          return { data: { user } }
-        } catch (error) {
-          console.error('Get user error:', error)
-          return { data: { user: null } }
-        }
+        console.log('Mock: Getting user (always anonymous for now)')
+        return { data: { user: null } }
       },
       
       onAuthStateChange: (callback) => {
-        // Simple auth state change listener
-        const checkAuth = async () => {
-          const { data: { user } } = await this.getUser()
-          callback('TOKEN_REFRESHED', { user })
-        }
-        
-        // Check auth state periodically
-        const interval = setInterval(checkAuth, 30000)
-        
+        console.log('Mock: Setting up auth state change listener')
         return {
           data: {
             subscription: {
-              unsubscribe: () => clearInterval(interval)
+              unsubscribe: () => console.log('Mock: Unsubscribed from auth changes')
             }
           }
         }
@@ -96,14 +37,15 @@ const createSimpleSupabaseClient = () => {
 }
 
 // Initialize the client
-const supabase = createSimpleSupabaseClient()
-console.log('Simple Supabase client initialized')
+const supabase = createMockSupabaseClient()
+console.log('Mock Supabase client initialized')
 
 // Auth functions
 export const auth = {
   // Sign up with email (passwordless)
   async signUp(email) {
     try {
+      console.log('Signing up user:', email)
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -120,6 +62,7 @@ export const auth = {
   // Sign in with email (passwordless)
   async signIn(email) {
     try {
+      console.log('Signing in user:', email)
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
         options: {
