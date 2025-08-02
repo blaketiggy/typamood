@@ -1139,6 +1139,8 @@ document.getElementById('publish').addEventListener('click', async () => {
     console.log('Publishing moodboard with image data length:', dataURL.length);
     console.log('Image data preview:', dataURL.substring(0, 100) + '...');
     console.log('Products to save:', products);
+    console.log('Loaded images count:', loadedImages.length);
+    console.log('Loaded images with URLs:', loadedImages.filter(img => img.originalImageUrl && img.originalImageUrl !== 'Pasted Image').length);
 
     // Publish to Supabase
     const result = await api.publishMoodboard(moodboardData);

@@ -177,26 +177,15 @@
                     }
                 }
                 
-                for (const key of storageKeys) {
-                    if (key.startsWith('moodboard_')) {
-                        try {
-                            const data = JSON.parse(localStorage.getItem(key));
-                            console.log('Found moodboard data:', data);
-                            
-                            // Check if this moodboard matches the URL title
-                            const dataTitle = data.title ? data.title.toLowerCase().replace(/[^a-z0-9]/gi, '_') : '';
-                            const urlTitle = moodboardTitle.toLowerCase();
-                            
-                            console.log('Comparing titles:', { dataTitle, urlTitle });
-                            
-                            if (dataTitle === urlTitle) {
-                                moodboardData = data;
-                                console.log('Found matching moodboard data!');
-                                break;
-                            }
-                        } catch (e) {
-                            console.log('Failed to parse localStorage item:', key, e);
-                        }
+                // Try to find any moodboard data (for testing, use the most recent one)
+                if (moodboardKeys.length > 0) {
+                    const mostRecentKey = moodboardKeys[moodboardKeys.length - 1];
+                    try {
+                        const data = JSON.parse(localStorage.getItem(mostRecentKey));
+                        console.log('Using most recent moodboard data:', mostRecentKey);
+                        moodboardData = data;
+                    } catch (e) {
+                        console.log('Failed to parse most recent moodboard data:', e);
                     }
                 }
 
@@ -240,6 +229,7 @@
                     // Display products
                     if (moodboardData.products && moodboardData.products.length > 0) {
                         console.log('Displaying products:', moodboardData.products);
+                        console.log('Product structure example:', moodboardData.products[0]);
                         document.getElementById('products-section').style.display = 'block';
                         const productsGrid = document.getElementById('products-grid');
                         
@@ -251,6 +241,7 @@
                         `).join('');
                     } else {
                         console.log('No products to display');
+                        console.log('Products array:', moodboardData.products);
                         // Show placeholder if no products
                         document.getElementById('products-section').style.display = 'block';
                         document.getElementById('products-grid').innerHTML = '<div class="product-item"><div class="product-placeholder">No products added to this moodboard</div></div>';
